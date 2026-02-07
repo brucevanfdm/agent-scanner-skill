@@ -28,7 +28,8 @@ The client manages:
 
 import asyncio
 import logging
-import os
+
+from ...llm_provider_config import resolve_llm_api_key
 
 try:
     from litellm import acompletion
@@ -107,19 +108,7 @@ class AlignmentLLMClient:
         Returns:
             API key or None
         """
-        model_lower = model.lower()
-
-        # Special cases with different auth mechanisms
-        if "vertex" in model_lower:
-            # Vertex AI uses Google Cloud service account credentials
-            return os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
-        elif "ollama" in model_lower:
-            # Ollama is local and typically doesn't need API key
-            return None
-
-        # All providers (including Bedrock, Gemini, OpenAI, Anthropic, Azure):
-        # Use SKILL_SCANNER_LLM_API_KEY
-        return os.environ.get("SKILL_SCANNER_LLM_API_KEY")
+        return resolve_llm_api_key(model=model)
 
     def _is_bedrock_model(self, model: str) -> bool:
         """Check if model is AWS Bedrock.

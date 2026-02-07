@@ -44,7 +44,7 @@ from typing import Any
 from ...threats.threats import ThreatMapping
 from ..models import Finding, Severity, Skill, ThreatCategory
 from .base import BaseAnalyzer
-from .llm_provider_config import ProviderConfig
+from .llm_provider_config import resolve_llm_api_key
 from .llm_request_handler import LLMRequestHandler
 
 # Check for LiteLLM availability
@@ -264,18 +264,17 @@ class MetaAnalyzer(BaseAnalyzer):
         if not LITELLM_AVAILABLE:
             raise ImportError("LiteLLM is required for MetaAnalyzer. Install with: pip install litellm")
 
-        # Use SKILL_SCANNER_* env vars only (no provider-specific fallbacks)
-        # Priority: meta-specific > scanner-wide
-        self.api_key = (
-            api_key
-            or os.getenv("SKILL_SCANNER_META_LLM_API_KEY")  # Meta-specific
-            or os.getenv("SKILL_SCANNER_LLM_API_KEY")  # Scanner-wide
-        )
+        # Priority: explicit > meta-specific env > scanner/provider env fallbacks.
         self.model = (
             model
             or os.getenv("SKILL_SCANNER_META_LLM_MODEL")  # Meta-specific
             or os.getenv("SKILL_SCANNER_LLM_MODEL")  # Scanner-wide
             or "claude-3-5-sonnet-20241022"
+        )
+        self.api_key = (
+            api_key
+            or os.getenv("SKILL_SCANNER_META_LLM_API_KEY")  # Meta-specific
+            or resolve_llm_api_key(self.model)  # Scanner-wide + provider fallbacks
         )
         self.base_url = (
             base_url
@@ -292,13 +291,17 @@ class MetaAnalyzer(BaseAnalyzer):
         self.aws_region = aws_region
         self.aws_profile = aws_profile
         self.aws_session_token = aws_session_token
-        self.is_bedrock = self.model and "bedrock/" in self.model
+        model_lower = (self.model or "").lower()
+        self.is_bedrock = "bedrock/" in model_lower
+        self.is_ollama = model_lower.startswith("ollama/")
+        self.is_vertex = model_lower.startswith("vertex_ai/") or "vertex" in model_lower
 
         # Validate configuration
-        if not self.api_key and not self.is_bedrock:
+        if not self.api_key and not self.is_bedrock and not self.is_ollama and not self.is_vertex:
             raise ValueError(
                 "Meta-Analyzer LLM API key not configured. "
-                "Set SKILL_SCANNER_META_LLM_API_KEY or SKILL_SCANNER_LLM_API_KEY environment variable."
+                "Set SKILL_SCANNER_META_LLM_API_KEY, SKILL_SCANNER_LLM_API_KEY, "
+                "or a provider key (e.g., OPENAI_API_KEY / ANTHROPIC_API_KEY / GEMINI_API_KEY)."
             )
 
         # Azure validation

@@ -21,7 +21,17 @@ export SKILL_SCANNER_RUNTIME=venv
 | `quick` | `--use-trigger` | Fast local checks during edits | Low |
 | `balanced` | `--use-behavioral --use-trigger` | Default manual review | Medium |
 | `deep` | `--use-behavioral --use-trigger --use-llm --enable-meta` | High-confidence audit before release | High |
+| `deep-agent` | `--use-behavioral --use-trigger --format json` | No standalone scanner LLM API; hand off semantic review to Claude Code/Codex | Medium |
 | `ci` | `--use-behavioral --use-trigger --format sarif --fail-on-findings` | CI gate with machine-readable output | Medium |
+
+### deep-agent Outputs
+
+When using `deep-agent`, wrapper emits:
+
+- JSON report (default): `.runtime/host-agent-review.json`
+- Host-agent task prompt (default): `.runtime/host-agent-review-prompt.md`
+
+If you pass `--output`, the prompt file automatically points to that JSON path.
 
 ## Optional Wheelhouse
 
@@ -43,8 +53,11 @@ export SKILL_SCANNER_INSTALL_WHEELS=1
 
 1. Start with `quick` while iterating.
 2. Run `balanced` before declaring remediation complete.
-3. Use `deep` when LLM keys are available and risk is high.
-4. Use `ci` in pipelines with SARIF ingestion.
+3. Use `deep` when scanner-side LLM API access is available and risk is high.
+4. Use `deep-agent` when you want Claude Code/Codex host agent to do semantic review without separate scanner LLM key setup.
+5. Use `ci` in pipelines with SARIF ingestion.
+
+For `deep-agent`, after scan completion ask your host agent to execute the generated prompt file directly.
 
 ## Optional Analyzer Flags
 

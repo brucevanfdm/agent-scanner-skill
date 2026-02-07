@@ -102,7 +102,7 @@ def scan_command(args):
         else:
             try:
                 # Get provider/model config from args + environment
-                # Use SKILL_SCANNER_* env vars only (no provider-specific fallbacks)
+                # SKILL_SCANNER_* env vars are preferred; provider env fallback is handled in ProviderConfig
                 provider = getattr(args, "llm_provider", None)
                 api_key = os.getenv("SKILL_SCANNER_LLM_API_KEY")
                 model = os.getenv("SKILL_SCANNER_LLM_MODEL")
@@ -178,7 +178,7 @@ def scan_command(args):
             print("Warning: Meta-analysis requires at least 2 analyzers. Skipping meta-analysis.", file=sys.stderr)
         else:
             try:
-                # Use SKILL_SCANNER_* env vars only (no provider-specific fallbacks)
+                # SKILL_SCANNER_* env vars are preferred; provider env fallback is handled in ProviderConfig
                 # Priority: meta-specific > scanner-wide
                 meta_api_key = os.getenv("SKILL_SCANNER_META_LLM_API_KEY") or os.getenv("SKILL_SCANNER_LLM_API_KEY")
                 meta_model = os.getenv("SKILL_SCANNER_META_LLM_MODEL") or os.getenv("SKILL_SCANNER_LLM_MODEL")
@@ -328,7 +328,7 @@ def scan_all_command(args):
             print("Install with: pip install litellm anthropic openai", file=sys.stderr)
         else:
             try:
-                # Use SKILL_SCANNER_* env vars only (no provider-specific fallbacks)
+                # SKILL_SCANNER_* env vars are preferred; provider env fallback is handled in ProviderConfig
                 provider = getattr(args, "llm_provider", None)
                 api_key = os.getenv("SKILL_SCANNER_LLM_API_KEY")
                 model = os.getenv("SKILL_SCANNER_LLM_MODEL")
@@ -404,7 +404,7 @@ def scan_all_command(args):
             print("Warning: Meta-analysis requires at least 2 analyzers. Skipping meta-analysis.", file=sys.stderr)
         else:
             try:
-                # Use SKILL_SCANNER_* env vars only (no provider-specific fallbacks)
+                # SKILL_SCANNER_* env vars are preferred; provider env fallback is handled in ProviderConfig
                 # Priority: meta-specific > scanner-wide
                 meta_api_key = os.getenv("SKILL_SCANNER_META_LLM_API_KEY") or os.getenv("SKILL_SCANNER_LLM_API_KEY")
                 meta_model = os.getenv("SKILL_SCANNER_META_LLM_MODEL") or os.getenv("SKILL_SCANNER_LLM_MODEL")

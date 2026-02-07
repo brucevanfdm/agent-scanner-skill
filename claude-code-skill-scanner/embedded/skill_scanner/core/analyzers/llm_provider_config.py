@@ -23,20 +23,110 @@ Handles detection and configuration of different LLM providers
 
 import importlib.util
 import os
+from collections.abc import Mapping
 
 # Check for Google GenAI availability
-# Wrap in try/except because find_spec can raise ModuleNotFoundError
-# if the google namespace package is in a broken state
+# Wrap in try/except because find_spec can fail in partially installed
+# namespace package states.
 try:
     GOOGLE_GENAI_AVAILABLE = importlib.util.find_spec("google.genai") is not None
-except (ImportError, ModuleNotFoundError):
+except Exception:
+    # find_spec can fail when namespace packages are partially/broken installed.
     GOOGLE_GENAI_AVAILABLE = False
 
 # Check for LiteLLM availability
 try:
     LITELLM_AVAILABLE = importlib.util.find_spec("litellm") is not None
-except (ImportError, ModuleNotFoundError):
+except Exception:
     LITELLM_AVAILABLE = False
+
+
+def _is_truthy(value: str | None) -> bool:
+    """Interpret common env-var boolean values."""
+    if value is None:
+        return False
+    return value.strip().lower() not in {"", "0", "false", "no", "off"}
+
+
+def _detect_provider_family(model: str) -> str:
+    """Infer provider family from model string."""
+    model_lower = model.lower()
+
+    if "bedrock/" in model or model_lower.startswith("bedrock/"):
+        return "bedrock"
+    if model_lower.startswith("vertex_ai/") or "vertex" in model_lower:
+        return "vertex"
+    if model_lower.startswith("ollama/"):
+        return "ollama"
+    if model_lower.startswith("openrouter/"):
+        return "openrouter"
+    if model_lower.startswith("azure/") or "azure" in model_lower:
+        return "azure"
+    if "gemini" in model_lower or model_lower.startswith("gemini/"):
+        return "gemini"
+    if "claude" in model_lower or "anthropic" in model_lower:
+        return "anthropic"
+    if (
+        model_lower.startswith("gpt")
+        or model_lower.startswith("o1")
+        or model_lower.startswith("o3")
+        or "openai" in model_lower
+    ):
+        return "openai"
+    return "generic"
+
+
+def resolve_llm_api_key(
+    model: str,
+    explicit_api_key: str | None = None,
+    env: Mapping[str, str] | None = None,
+) -> str | None:
+    """Resolve API key/credentials path for a model.
+
+    Resolution order:
+    1) Explicit parameter
+    2) SKILL_SCANNER_LLM_API_KEY
+    3) Provider-specific env vars (enabled by default)
+
+    Provider-specific fallback can be disabled with:
+    `SKILL_SCANNER_ALLOW_PROVIDER_ENV_FALLBACK=0`.
+    """
+    if explicit_api_key is not None:
+        return explicit_api_key
+
+    env_map = os.environ if env is None else env
+    provider = _detect_provider_family(model)
+
+    if provider == "vertex":
+        # Vertex AI typically uses ADC or service account credentials path.
+        return env_map.get("GOOGLE_APPLICATION_CREDENTIALS")
+    if provider == "ollama":
+        # Local model server, API key is usually not required.
+        return None
+
+    if scanner_key := env_map.get("SKILL_SCANNER_LLM_API_KEY"):
+        return scanner_key
+
+    allow_provider_fallback = _is_truthy(env_map.get("SKILL_SCANNER_ALLOW_PROVIDER_ENV_FALLBACK", "1"))
+    if not allow_provider_fallback:
+        return None
+
+    provider_env_candidates = {
+        "anthropic": ["ANTHROPIC_API_KEY"],
+        "openai": ["OPENAI_API_KEY"],
+        "azure": ["AZURE_OPENAI_API_KEY", "OPENAI_API_KEY"],
+        "gemini": ["GEMINI_API_KEY", "GOOGLE_API_KEY"],
+        "openrouter": ["OPENROUTER_API_KEY"],
+        # Bedrock usually relies on IAM/instance credentials.
+        "bedrock": [],
+        "generic": ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY"],
+    }
+
+    for key_name in provider_env_candidates.get(provider, provider_env_candidates["generic"]):
+        if value := env_map.get(key_name):
+            return value
+
+    return None
 
 
 class ProviderConfig:
@@ -116,26 +206,9 @@ class ProviderConfig:
     def _resolve_api_key(self, api_key: str | None) -> str | None:
         """Resolve API key from parameter or environment variables.
 
-        Uses SKILL_SCANNER_LLM_API_KEY consistently for all providers.
-
-        Special cases:
-        - Vertex AI: Uses GOOGLE_APPLICATION_CREDENTIALS (service account)
-        - Ollama: No API key needed (local)
+        Supports both scanner-specific env var and provider-native env vars.
         """
-        if api_key is not None:
-            return api_key
-
-        # Special cases with different auth mechanisms
-        if self.is_vertex:
-            # Vertex AI uses Google Cloud service account credentials
-            return os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-        elif self.is_ollama:
-            # Ollama is local and typically doesn't need API key
-            return None
-
-        # All providers (including Bedrock, Gemini, OpenAI, Anthropic, Azure):
-        # Use SKILL_SCANNER_LLM_API_KEY
-        return os.getenv("SKILL_SCANNER_LLM_API_KEY")
+        return resolve_llm_api_key(model=self.model, explicit_api_key=api_key)
 
     def _normalize_gemini_model_name(self, model: str) -> str:
         """
@@ -180,7 +253,8 @@ class ProviderConfig:
 
     def validate(self) -> None:
         """Validate that configuration is complete."""
-        if not self.is_bedrock and not self.api_key:
+        # Keyless auth is supported for some providers (Bedrock IAM, Ollama local, Vertex ADC).
+        if not self.is_bedrock and not self.is_ollama and not self.is_vertex and not self.api_key:
             raise ValueError(f"API key required for model {self.model}")
 
     def get_request_params(self) -> dict:
@@ -188,13 +262,8 @@ class ProviderConfig:
         params = {}
 
         if self.api_key:
-            if self.is_gemini:
-                # For Google AI Studio, LiteLLM uses GEMINI_API_KEY environment variable
-                if not os.getenv("GEMINI_API_KEY"):
-                    os.environ["GEMINI_API_KEY"] = self.api_key
-            else:
-                # Pass api_key for all providers including Bedrock (bearer token auth)
-                params["api_key"] = self.api_key
+            # Pass api_key per request. Avoid mutating global environment at runtime.
+            params["api_key"] = self.api_key
 
         if self.base_url:
             params["api_base"] = self.base_url
