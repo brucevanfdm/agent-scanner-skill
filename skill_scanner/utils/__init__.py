@@ -17,7 +17,7 @@
 """Utility modules for Skill Scanner."""
 
 from .file_utils import get_file_type, is_binary_file, read_file_safe
-from .logging_utils import get_logger, setup_logger
+from .logging_config import get_logger, setup_logger
 
 __all__ = [
     "read_file_safe",

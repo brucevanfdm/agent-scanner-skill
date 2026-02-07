@@ -281,6 +281,31 @@ class Report:
         if result.is_safe:
             self.safe_count += 1
 
+    def recalculate_totals(self):
+        """Recalculate aggregate counters from scan_results.
+
+        Call this after modifying findings on individual scan results
+        (e.g. after meta-analysis filtering).
+        """
+        self.total_skills_scanned = len(self.scan_results)
+        self.total_findings = sum(len(r.findings) for r in self.scan_results)
+        self.critical_count = sum(
+            1 for r in self.scan_results for f in r.findings if f.severity == Severity.CRITICAL
+        )
+        self.high_count = sum(
+            1 for r in self.scan_results for f in r.findings if f.severity == Severity.HIGH
+        )
+        self.medium_count = sum(
+            1 for r in self.scan_results for f in r.findings if f.severity == Severity.MEDIUM
+        )
+        self.low_count = sum(
+            1 for r in self.scan_results for f in r.findings if f.severity == Severity.LOW
+        )
+        self.info_count = sum(
+            1 for r in self.scan_results for f in r.findings if f.severity == Severity.INFO
+        )
+        self.safe_count = sum(1 for r in self.scan_results if r.is_safe)
+
     def to_dict(self) -> dict[str, Any]:
         """Convert report to dictionary."""
         return {

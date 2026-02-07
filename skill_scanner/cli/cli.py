@@ -179,6 +179,47 @@ def _initialize_analyzers(args, status_print):
     return analyzers, meta_analyzer
 
 
+def _generate_and_output_report(result_or_report, args, is_multi_skill=False):
+    """Generate report in requested format and output to file or stdout.
+
+    Args:
+        result_or_report: ScanResult or Report object
+        args: CLI arguments with format, output, detailed, compact attributes
+        is_multi_skill: If True, use multi-skill summary for summary format
+
+    Returns:
+        Generated report string
+    """
+    # Generate report based on format
+    if args.format == "json":
+        reporter = JSONReporter(pretty=not args.compact)
+        output = reporter.generate_report(result_or_report)
+    elif args.format == "markdown":
+        reporter = MarkdownReporter(detailed=args.detailed)
+        output = reporter.generate_report(result_or_report)
+    elif args.format == "table":
+        reporter = TableReporter()
+        output = reporter.generate_report(result_or_report)
+    elif args.format == "sarif":
+        reporter = SARIFReporter()
+        output = reporter.generate_report(result_or_report)
+    else:  # summary
+        if is_multi_skill:
+            output = generate_multi_skill_summary(result_or_report)
+        else:
+            output = generate_summary(result_or_report)
+
+    # Output
+    if args.output:
+        with open(args.output, "w", encoding="utf-8") as f:
+            f.write(output)
+        print(f"Report saved to: {args.output}")
+    else:
+        print(output)
+
+    return output
+
+
 def _run_meta_analysis_on_result(scanner, meta_analyzer, result):
     """Run meta-analysis for a single scan result and update it in place."""
     skill = scanner.loader.load_skill(Path(result.skill_directory))
@@ -205,21 +246,6 @@ def _run_meta_analysis_on_result(scanner, meta_analyzer, result):
     )
     new_count = sum(1 for f in filtered_findings if f.analyzer == "meta")
     return fp_count, new_count
-
-
-def _recalculate_report_totals(report) -> None:
-    """Recalculate aggregate counters after findings are modified."""
-    report.total_findings = sum(len(r.findings) for r in report.scan_results)
-    report.critical_count = sum(
-        1 for r in report.scan_results for f in r.findings if f.severity.value == "CRITICAL"
-    )
-    report.high_count = sum(1 for r in report.scan_results for f in r.findings if f.severity.value == "HIGH")
-    report.medium_count = sum(
-        1 for r in report.scan_results for f in r.findings if f.severity.value == "MEDIUM"
-    )
-    report.low_count = sum(1 for r in report.scan_results for f in r.findings if f.severity.value == "LOW")
-    report.info_count = sum(1 for r in report.scan_results for f in r.findings if f.severity.value == "INFO")
-    report.safe_count = sum(1 for r in report.scan_results if r.is_safe)
 
 
 def scan_command(args):
@@ -252,29 +278,8 @@ def scan_command(args):
                 print(f"Warning: Meta-analysis failed: {e}", file=sys.stderr)
                 print("Continuing with original findings.", file=sys.stderr)
 
-        # Generate report based on format
-        if args.format == "json":
-            reporter = JSONReporter(pretty=not args.compact)
-            output = reporter.generate_report(result)
-        elif args.format == "markdown":
-            reporter = MarkdownReporter(detailed=args.detailed)
-            output = reporter.generate_report(result)
-        elif args.format == "table":
-            reporter = TableReporter()
-            output = reporter.generate_report(result)
-        elif args.format == "sarif":
-            reporter = SARIFReporter()
-            output = reporter.generate_report(result)
-        else:  # summary
-            output = generate_summary(result)
-
-        # Output
-        if args.output:
-            with open(args.output, "w", encoding="utf-8") as f:
-                f.write(output)
-            print(f"Report saved to: {args.output}")
-        else:
-            print(output)
+        # Generate and output report
+        _generate_and_output_report(result, args, is_multi_skill=False)
 
         # Exit with error code if critical/high issues found
         if not result.is_safe and args.fail_on_findings:
@@ -332,31 +337,10 @@ def scan_all_command(args):
                 f"Meta-analysis complete: {total_fp_filtered} findings marked as likely false positives, {total_new_threats} new threats detected"
             )
 
-            _recalculate_report_totals(report)
+            report.recalculate_totals()
 
-        # Generate report based on format
-        if args.format == "json":
-            reporter = JSONReporter(pretty=not args.compact)
-            output = reporter.generate_report(report)
-        elif args.format == "markdown":
-            reporter = MarkdownReporter(detailed=args.detailed)
-            output = reporter.generate_report(report)
-        elif args.format == "table":
-            reporter = TableReporter()
-            output = reporter.generate_report(report)
-        elif args.format == "sarif":
-            reporter = SARIFReporter()
-            output = reporter.generate_report(report)
-        else:  # summary
-            output = generate_multi_skill_summary(report)
-
-        # Output
-        if args.output:
-            with open(args.output, "w", encoding="utf-8") as f:
-                f.write(output)
-            print(f"Report saved to: {args.output}")
-        else:
-            print(output)
+        # Generate and output report
+        _generate_and_output_report(report, args, is_multi_skill=True)
 
         # Exit with error code if any skills have issues
         if args.fail_on_findings and (report.critical_count > 0 or report.high_count > 0):
@@ -515,6 +499,77 @@ def generate_multi_skill_summary(report) -> str:
     return "\n".join(lines)
 
 
+def _add_common_scan_arguments(parser):
+    """Add common arguments shared by scan and scan-all commands.
+
+    Args:
+        parser: ArgumentParser to add arguments to
+    """
+    parser.add_argument(
+        "--format",
+        choices=["summary", "json", "markdown", "table", "sarif"],
+        default="summary",
+        help="Output format (default: summary). Use 'sarif' for GitHub Code Scanning integration.",
+    )
+    parser.add_argument("--output", "-o", help="Output file path")
+    parser.add_argument("--detailed", action="store_true", help="Include detailed findings")
+    parser.add_argument("--compact", action="store_true", help="Compact JSON output")
+    parser.add_argument(
+        "--fail-on-findings", action="store_true", help="Exit with error code if critical/high findings exist"
+    )
+    parser.add_argument("--use-behavioral", action="store_true", help="Enable behavioral dataflow analysis")
+    parser.add_argument(
+        "--use-llm", action="store_true", help="Enable LLM-based semantic analysis (requires API key)"
+    )
+    parser.add_argument(
+        "--use-virustotal", action="store_true", help="Enable VirusTotal binary file scanning (requires API key)"
+    )
+    parser.add_argument("--vt-api-key", help="VirusTotal API key (or set VIRUSTOTAL_API_KEY environment variable)")
+    parser.add_argument(
+        "--vt-upload-files",
+        action="store_true",
+        help="Upload unknown files to VirusTotal (default: hash-only lookup for privacy)",
+    )
+    parser.add_argument(
+        "--use-aidefense", action="store_true", help="Enable AI Defense analyzer (requires API key)"
+    )
+    parser.add_argument(
+        "--aidefense-api-key", help="AI Defense API key (or set AI_DEFENSE_API_KEY environment variable)"
+    )
+    parser.add_argument("--aidefense-api-url", help="AI Defense API URL (optional, defaults to US region)")
+    parser.add_argument(
+        "--llm-provider", choices=["anthropic", "openai"], default="anthropic", help="LLM provider (default: anthropic)"
+    )
+    parser.add_argument(
+        "--use-trigger",
+        action="store_true",
+        help="Enable trigger specificity analysis (detects overly generic descriptions)",
+    )
+    parser.add_argument(
+        "--enable-meta",
+        action="store_true",
+        help="Enable meta-analysis for false positive filtering and finding prioritization (requires 2+ analyzers including LLM)",
+    )
+    parser.add_argument(
+        "--yara-mode",
+        choices=["strict", "balanced", "permissive"],
+        default="balanced",
+        help="YARA detection mode: strict (max security, more FPs), balanced (default), permissive (fewer FPs, may miss threats)",
+    )
+    parser.add_argument(
+        "--custom-rules",
+        metavar="PATH",
+        help="Path to directory containing custom YARA rules (.yara files) to use instead of built-in rules",
+    )
+    parser.add_argument(
+        "--disable-rule",
+        action="append",
+        metavar="RULE_NAME",
+        dest="disabled_rules",
+        help="Disable a specific rule by name (can be used multiple times). Example: --disable-rule YARA_script_injection",
+    )
+
+
 def main():
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(
@@ -553,142 +608,16 @@ Examples:
     # Scan command
     scan_parser = subparsers.add_parser("scan", help="Scan a single skill package")
     scan_parser.add_argument("skill_directory", help="Path to skill directory")
-    scan_parser.add_argument(
-        "--format",
-        choices=["summary", "json", "markdown", "table", "sarif"],
-        default="summary",
-        help="Output format (default: summary). Use 'sarif' for GitHub Code Scanning integration.",
-    )
-    scan_parser.add_argument("--output", "-o", help="Output file path")
-    scan_parser.add_argument("--detailed", action="store_true", help="Include detailed findings")
-    scan_parser.add_argument("--compact", action="store_true", help="Compact JSON output")
-    scan_parser.add_argument(
-        "--fail-on-findings", action="store_true", help="Exit with error code if critical/high findings exist"
-    )
-    scan_parser.add_argument("--use-behavioral", action="store_true", help="Enable behavioral dataflow analysis")
-    scan_parser.add_argument(
-        "--use-llm", action="store_true", help="Enable LLM-based semantic analysis (requires API key)"
-    )
-    scan_parser.add_argument(
-        "--use-virustotal", action="store_true", help="Enable VirusTotal binary file scanning (requires API key)"
-    )
-    scan_parser.add_argument("--vt-api-key", help="VirusTotal API key (or set VIRUSTOTAL_API_KEY environment variable)")
-    scan_parser.add_argument(
-        "--vt-upload-files",
-        action="store_true",
-        help="Upload unknown files to VirusTotal (default: hash-only lookup for privacy)",
-    )
-    scan_parser.add_argument(
-        "--use-aidefense", action="store_true", help="Enable AI Defense analyzer (requires API key)"
-    )
-    scan_parser.add_argument(
-        "--aidefense-api-key", help="AI Defense API key (or set AI_DEFENSE_API_KEY environment variable)"
-    )
-    scan_parser.add_argument("--aidefense-api-url", help="AI Defense API URL (optional, defaults to US region)")
-    scan_parser.add_argument(
-        "--llm-provider", choices=["anthropic", "openai"], default="anthropic", help="LLM provider (default: anthropic)"
-    )
-    scan_parser.add_argument(
-        "--use-trigger",
-        action="store_true",
-        help="Enable trigger specificity analysis (detects overly generic descriptions)",
-    )
-    scan_parser.add_argument(
-        "--enable-meta",
-        action="store_true",
-        help="Enable meta-analysis for false positive filtering and finding prioritization (requires 2+ analyzers including LLM)",
-    )
-    scan_parser.add_argument(
-        "--yara-mode",
-        choices=["strict", "balanced", "permissive"],
-        default="balanced",
-        help="YARA detection mode: strict (max security, more FPs), balanced (default), permissive (fewer FPs, may miss threats)",
-    )
-    scan_parser.add_argument(
-        "--custom-rules",
-        metavar="PATH",
-        help="Path to directory containing custom YARA rules (.yara files) to use instead of built-in rules",
-    )
-    scan_parser.add_argument(
-        "--disable-rule",
-        action="append",
-        metavar="RULE_NAME",
-        dest="disabled_rules",
-        help="Disable a specific rule by name (can be used multiple times). Example: --disable-rule YARA_script_injection",
-    )
+    _add_common_scan_arguments(scan_parser)
 
     # Scan-all command
     scan_all_parser = subparsers.add_parser("scan-all", help="Scan multiple skill packages")
     scan_all_parser.add_argument("skills_directory", help="Directory containing skills")
     scan_all_parser.add_argument("--recursive", "-r", action="store_true", help="Recursively search for skills")
     scan_all_parser.add_argument(
-        "--format",
-        choices=["summary", "json", "markdown", "table", "sarif"],
-        default="summary",
-        help="Output format (default: summary). Use 'sarif' for GitHub Code Scanning integration.",
-    )
-    scan_all_parser.add_argument("--output", "-o", help="Output file path")
-    scan_all_parser.add_argument("--detailed", action="store_true", help="Include detailed findings")
-    scan_all_parser.add_argument("--compact", action="store_true", help="Compact JSON output")
-    scan_all_parser.add_argument(
-        "--fail-on-findings", action="store_true", help="Exit with error code if any critical/high findings exist"
-    )
-    scan_all_parser.add_argument("--use-behavioral", action="store_true", help="Enable behavioral dataflow analysis")
-    scan_all_parser.add_argument(
-        "--use-llm", action="store_true", help="Enable LLM-based semantic analysis (requires API key)"
-    )
-    scan_all_parser.add_argument(
-        "--use-virustotal", action="store_true", help="Enable VirusTotal binary file scanning (requires API key)"
-    )
-    scan_all_parser.add_argument(
-        "--vt-api-key", help="VirusTotal API key (or set VIRUSTOTAL_API_KEY environment variable)"
-    )
-    scan_all_parser.add_argument(
-        "--vt-upload-files",
-        action="store_true",
-        help="Upload unknown files to VirusTotal (default: hash-only lookup for privacy)",
-    )
-    scan_all_parser.add_argument(
-        "--use-aidefense", action="store_true", help="Enable AI Defense analyzer (requires API key)"
-    )
-    scan_all_parser.add_argument(
-        "--aidefense-api-key", help="AI Defense API key (or set AI_DEFENSE_API_KEY environment variable)"
-    )
-    scan_all_parser.add_argument("--aidefense-api-url", help="AI Defense API URL (optional, defaults to US region)")
-    scan_all_parser.add_argument(
-        "--llm-provider", choices=["anthropic", "openai"], default="anthropic", help="LLM provider (default: anthropic)"
-    )
-    scan_all_parser.add_argument(
-        "--use-trigger",
-        action="store_true",
-        help="Enable trigger specificity analysis (detects overly generic descriptions)",
-    )
-    scan_all_parser.add_argument(
         "--check-overlap", action="store_true", help="Enable cross-skill description overlap detection"
     )
-    scan_all_parser.add_argument(
-        "--enable-meta",
-        action="store_true",
-        help="Enable meta-analysis for false positive filtering and finding prioritization (requires 2+ analyzers including LLM)",
-    )
-    scan_all_parser.add_argument(
-        "--yara-mode",
-        choices=["strict", "balanced", "permissive"],
-        default="balanced",
-        help="YARA detection mode: strict (max security, more FPs), balanced (default), permissive (fewer FPs, may miss threats)",
-    )
-    scan_all_parser.add_argument(
-        "--custom-rules",
-        metavar="PATH",
-        help="Path to directory containing custom YARA rules (.yara files) to use instead of built-in rules",
-    )
-    scan_all_parser.add_argument(
-        "--disable-rule",
-        action="append",
-        metavar="RULE_NAME",
-        dest="disabled_rules",
-        help="Disable a specific rule by name (can be used multiple times). Example: --disable-rule YARA_script_injection",
-    )
+    _add_common_scan_arguments(scan_all_parser)
 
     # List analyzers command
     subparsers.add_parser("list-analyzers", help="List available analyzers")

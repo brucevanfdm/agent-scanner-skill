@@ -96,33 +96,15 @@ _STOP_WORDS = frozenset(
 class SkillScanner:
     """Main scanner that orchestrates skill analysis."""
 
-    def __init__(
-        self,
-        analyzers: list[BaseAnalyzer] | None = None,
-        use_virustotal: bool = False,
-        virustotal_api_key: str | None = None,
-        virustotal_upload_files: bool = False,
-    ):
+    def __init__(self, analyzers: list[BaseAnalyzer] | None = None):
         """
         Initialize scanner with analyzers.
 
         Args:
-            analyzers: List of analyzers to use. If None, uses default (static).
-            use_virustotal: Whether to enable VirusTotal binary scanning
-            virustotal_api_key: VirusTotal API key (required if use_virustotal=True)
-            virustotal_upload_files: If True, upload unknown files to VT. If False (default),
-                                    only check existing hashes
+            analyzers: List of analyzers to use. If None, uses default (StaticAnalyzer only).
         """
         if analyzers is None:
             self.analyzers: list[BaseAnalyzer] = [StaticAnalyzer()]
-
-            if use_virustotal and virustotal_api_key:
-                from .analyzers.virustotal_analyzer import VirusTotalAnalyzer
-
-                vt_analyzer = VirusTotalAnalyzer(
-                    api_key=virustotal_api_key, enabled=True, upload_files=virustotal_upload_files
-                )
-                self.analyzers.append(vt_analyzer)
         else:
             self.analyzers = analyzers
 
@@ -209,45 +191,13 @@ class SkillScanner:
 
         for skill_dir in skill_dirs:
             try:
-                # Load skill once for both scanning and cross-skill analysis
-                skill = self.loader.load_skill(skill_dir)
-
-                # Run all analyzers on the already-loaded skill
-                start_time = time.time()
-                all_findings = []
-                analyzer_names = []
-                validated_binary_files = set()
-
-                for analyzer in self.analyzers:
-                    findings = analyzer.analyze(skill)
-                    all_findings.extend(findings)
-                    analyzer_names.append(analyzer.get_name())
-
-                    if hasattr(analyzer, "validated_binary_files"):
-                        validated_binary_files.update(analyzer.validated_binary_files)
-
-                # Post-process findings
-                if validated_binary_files:
-                    all_findings = [
-                        f
-                        for f in all_findings
-                        if not (f.rule_id == "BINARY_FILE_DETECTED" and f.file_path in validated_binary_files)
-                    ]
-
-                scan_duration = time.time() - start_time
-
-                result = ScanResult(
-                    skill_name=skill.name,
-                    skill_directory=str(skill_dir.absolute()),
-                    findings=all_findings,
-                    scan_duration_seconds=scan_duration,
-                    analyzers_used=analyzer_names,
-                )
-
+                # Scan the skill using scan_skill method
+                result = self.scan_skill(skill_dir)
                 report.add_scan_result(result)
 
                 # Store skill for cross-skill analysis if needed
                 if check_overlap:
+                    skill = self.loader.load_skill(skill_dir)
                     loaded_skills.append(skill)
 
             except SkillLoadError as e:
@@ -272,30 +222,9 @@ class SkillScanner:
                 pass
 
         # Recalculate counters to include any cross-skill findings added post-scan.
-        self._recalculate_report_totals(report)
+        report.recalculate_totals()
 
         return report
-
-    def _recalculate_report_totals(self, report: Report) -> None:
-        """Recalculate aggregate counters from scan_results."""
-        report.total_skills_scanned = len(report.scan_results)
-        report.total_findings = sum(len(r.findings) for r in report.scan_results)
-        report.critical_count = sum(
-            1 for r in report.scan_results for f in r.findings if f.severity == Severity.CRITICAL
-        )
-        report.high_count = sum(
-            1 for r in report.scan_results for f in r.findings if f.severity == Severity.HIGH
-        )
-        report.medium_count = sum(
-            1 for r in report.scan_results for f in r.findings if f.severity == Severity.MEDIUM
-        )
-        report.low_count = sum(
-            1 for r in report.scan_results for f in r.findings if f.severity == Severity.LOW
-        )
-        report.info_count = sum(
-            1 for r in report.scan_results for f in r.findings if f.severity == Severity.INFO
-        )
-        report.safe_count = sum(1 for r in report.scan_results if r.is_safe)
 
     def _check_description_overlap(self, skills: list[Skill]) -> list[Finding]:
         """

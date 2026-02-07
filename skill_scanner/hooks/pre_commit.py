@@ -344,26 +344,26 @@ def main(args: list[str] | None = None) -> int:
     all_findings = []
 
     for skill_dir in sorted(affected_skills):
-        print(f"\n📦 {skill_dir.name}")
+        print(f"\n[SKILL] {skill_dir.name}")
 
         result = scan_skill(skill_dir, config)
 
         if result.get("error"):
-            print(f"  ⚠️  Error: {result['error']}", file=sys.stderr)
+            print(f"  [WARN] Error: {result['error']}", file=sys.stderr)
             continue
 
         findings = result.get("findings", [])
 
         if not findings:
-            print("  ✅ No issues found")
+            print("  [OK] No issues found")
             continue
 
         # Check if threshold is exceeded
         if check_severity_threshold(result, config["severity_threshold"]):
             blocked = True
-            print(f"  🚫 Blocked (threshold: {config['severity_threshold'].upper()})")
+            print(f"  [BLOCKED] Threshold: {config['severity_threshold'].upper()}")
         else:
-            print(f"  ⚠️  {len(findings)} finding(s) below threshold")
+            print(f"  [WARN] {len(findings)} finding(s) below threshold")
 
         # Print findings
         for finding in findings:
@@ -376,15 +376,15 @@ def main(args: list[str] | None = None) -> int:
     # Summary
     print(f"\n{'=' * 50}")
     if blocked:
-        print("❌ Commit BLOCKED - fix security issues before committing")
+        print("[FAIL] Commit BLOCKED - fix security issues before committing")
         print(f"   Threshold: {config['severity_threshold'].upper()} and above")
         return 1
     elif all_findings:
-        print(f"⚠️  {len(all_findings)} finding(s) detected (below threshold)")
+        print(f"[WARN] {len(all_findings)} finding(s) detected (below threshold)")
         print("   Consider reviewing and fixing these issues")
         return 0
     else:
-        print("✅ All skills passed security checks")
+        print("[OK] All skills passed security checks")
         return 0
 
 
@@ -427,18 +427,15 @@ fi
 exit $exit_code
 """
 
-    # Check if hook already exists
+    # Check if hook already exists - overwrite without interactive prompt
+    # (this code runs in agent context where input() is not available)
     if hook_path.exists():
-        print(f"Warning: Pre-commit hook already exists at {hook_path}")
-        response = input("Overwrite? [y/N] ").strip().lower()
-        if response != "y":
-            print("Aborted")
-            return 1
+        print(f"Warning: Overwriting existing pre-commit hook at {hook_path}")
 
     hook_path.write_text(hook_script)
     hook_path.chmod(0o755)
 
-    print(f"✅ Pre-commit hook installed at {hook_path}")
+    print(f"[OK] Pre-commit hook installed at {hook_path}")
     print("\nConfiguration:")
     print("  Create .skill_scannerrc in your repo root to customize behavior:")
     print('  { "severity_threshold": "high", "skills_path": ".claude/skills" }')
