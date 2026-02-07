@@ -271,7 +271,31 @@ class SkillScanner:
             except ImportError:
                 pass
 
+        # Recalculate counters to include any cross-skill findings added post-scan.
+        self._recalculate_report_totals(report)
+
         return report
+
+    def _recalculate_report_totals(self, report: Report) -> None:
+        """Recalculate aggregate counters from scan_results."""
+        report.total_skills_scanned = len(report.scan_results)
+        report.total_findings = sum(len(r.findings) for r in report.scan_results)
+        report.critical_count = sum(
+            1 for r in report.scan_results for f in r.findings if f.severity == Severity.CRITICAL
+        )
+        report.high_count = sum(
+            1 for r in report.scan_results for f in r.findings if f.severity == Severity.HIGH
+        )
+        report.medium_count = sum(
+            1 for r in report.scan_results for f in r.findings if f.severity == Severity.MEDIUM
+        )
+        report.low_count = sum(
+            1 for r in report.scan_results for f in r.findings if f.severity == Severity.LOW
+        )
+        report.info_count = sum(
+            1 for r in report.scan_results for f in r.findings if f.severity == Severity.INFO
+        )
+        report.safe_count = sum(1 for r in report.scan_results if r.is_safe)
 
     def _check_description_overlap(self, skills: list[Skill]) -> list[Finding]:
         """

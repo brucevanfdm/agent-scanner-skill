@@ -98,13 +98,14 @@ def scan_command(args):
     if hasattr(args, "use_llm") and args.use_llm:
         if not LLM_AVAILABLE:
             print("Warning: LLM analyzer requested but dependencies not installed.", file=sys.stderr)
-            print("Install with: pip install anthropic openai", file=sys.stderr)
+            print("Install with: pip install litellm anthropic openai", file=sys.stderr)
         else:
             try:
-                # Get API key and model from environment
+                # Get provider/model config from args + environment
                 # Use SKILL_SCANNER_* env vars only (no provider-specific fallbacks)
+                provider = getattr(args, "llm_provider", None)
                 api_key = os.getenv("SKILL_SCANNER_LLM_API_KEY")
-                model = os.getenv("SKILL_SCANNER_LLM_MODEL") or "claude-3-5-sonnet-20241022"
+                model = os.getenv("SKILL_SCANNER_LLM_MODEL")
                 base_url = os.getenv("SKILL_SCANNER_LLM_BASE_URL")
                 api_version = os.getenv("SKILL_SCANNER_LLM_API_VERSION")
 
@@ -113,9 +114,10 @@ def scan_command(args):
                     api_key=api_key,
                     base_url=base_url,
                     api_version=api_version,
+                    provider=provider,
                 )
                 analyzers.append(llm_analyzer)
-                status_print(f"Using LLM analyzer with model: {model}")
+                status_print(f"Using LLM analyzer with model: {llm_analyzer.model}")
             except Exception as e:
                 print(f"Warning: Could not initialize LLM analyzer: {e}", file=sys.stderr)
 
@@ -224,14 +226,17 @@ def scan_command(args):
                 )
 
                 # Update result with filtered findings
-                original_count = len(result.findings)
                 result.findings = filtered_findings
                 result.analyzers_used.append("meta_analyzer")
 
-                fp_count = original_count - len([f for f in filtered_findings if f.analyzer != "meta"])
-                new_count = len([f for f in filtered_findings if f.analyzer == "meta"])
+                fp_count = sum(
+                    1
+                    for f in filtered_findings
+                    if f.metadata and f.metadata.get("meta_false_positive") is True
+                )
+                new_count = sum(1 for f in filtered_findings if f.analyzer == "meta")
                 status_print(
-                    f"Meta-analysis complete: {fp_count} false positives filtered, {new_count} new threats detected"
+                    f"Meta-analysis complete: {fp_count} findings marked as likely false positives, {new_count} new threats detected"
                 )
 
             except Exception as e:
@@ -317,24 +322,30 @@ def scan_all_command(args):
             print(f"Warning: Could not initialize behavioral analyzer: {e}", file=sys.stderr)
 
     # Add LLM analyzer if requested
-    if hasattr(args, "use_llm") and args.use_llm and LLM_AVAILABLE:
-        try:
-            # Use SKILL_SCANNER_* env vars only (no provider-specific fallbacks)
-            api_key = os.getenv("SKILL_SCANNER_LLM_API_KEY")
-            model = os.getenv("SKILL_SCANNER_LLM_MODEL") or "claude-3-5-sonnet-20241022"
-            base_url = os.getenv("SKILL_SCANNER_LLM_BASE_URL")
-            api_version = os.getenv("SKILL_SCANNER_LLM_API_VERSION")
+    if hasattr(args, "use_llm") and args.use_llm:
+        if not LLM_AVAILABLE:
+            print("Warning: LLM analyzer requested but dependencies not installed.", file=sys.stderr)
+            print("Install with: pip install litellm anthropic openai", file=sys.stderr)
+        else:
+            try:
+                # Use SKILL_SCANNER_* env vars only (no provider-specific fallbacks)
+                provider = getattr(args, "llm_provider", None)
+                api_key = os.getenv("SKILL_SCANNER_LLM_API_KEY")
+                model = os.getenv("SKILL_SCANNER_LLM_MODEL")
+                base_url = os.getenv("SKILL_SCANNER_LLM_BASE_URL")
+                api_version = os.getenv("SKILL_SCANNER_LLM_API_VERSION")
 
-            llm_analyzer = LLMAnalyzer(
-                model=model,
-                api_key=api_key,
-                base_url=base_url,
-                api_version=api_version,
-            )
-            analyzers.append(llm_analyzer)
-            status_print(f"Using LLM analyzer with model: {model}")
-        except Exception as e:
-            print(f"Warning: Could not initialize LLM analyzer: {e}", file=sys.stderr)
+                llm_analyzer = LLMAnalyzer(
+                    model=model,
+                    api_key=api_key,
+                    base_url=base_url,
+                    api_version=api_version,
+                    provider=provider,
+                )
+                analyzers.append(llm_analyzer)
+                status_print(f"Using LLM analyzer with model: {llm_analyzer.model}")
+            except Exception as e:
+                print(f"Warning: Could not initialize LLM analyzer: {e}", file=sys.stderr)
 
     # Add VirusTotal analyzer if requested
     if hasattr(args, "use_virustotal") and args.use_virustotal:
@@ -445,7 +456,6 @@ def scan_all_command(args):
                         )
 
                         # Apply meta-analysis results
-                        original_count = len(result.findings)
                         filtered_findings = apply_meta_analysis_to_results(
                             original_findings=result.findings,
                             meta_result=meta_result,
@@ -453,8 +463,12 @@ def scan_all_command(args):
                         )
 
                         # Track statistics
-                        fp_count = original_count - len([f for f in filtered_findings if f.analyzer != "meta"])
-                        new_count = len([f for f in filtered_findings if f.analyzer == "meta"])
+                        fp_count = sum(
+                            1
+                            for f in filtered_findings
+                            if f.metadata and f.metadata.get("meta_false_positive") is True
+                        )
+                        new_count = sum(1 for f in filtered_findings if f.analyzer == "meta")
                         total_fp_filtered += fp_count
                         total_new_threats += new_count
 
@@ -466,7 +480,7 @@ def scan_all_command(args):
                         print(f"Warning: Meta-analysis failed for {result.skill_name}: {e}", file=sys.stderr)
 
             status_print(
-                f"Meta-analysis complete: {total_fp_filtered} total false positives filtered, {total_new_threats} new threats detected"
+                f"Meta-analysis complete: {total_fp_filtered} findings marked as likely false positives, {total_new_threats} new threats detected"
             )
 
             # Recalculate report totals

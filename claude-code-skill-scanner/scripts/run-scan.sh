@@ -30,7 +30,8 @@ INSTALL_SCRIPT="$SCRIPT_DIR/install-scanner.sh"
 
 MODE="$1"
 TARGET="$2"
-PROFILE="${3:-balanced}"
+PROFILE="balanced"
+HAS_PROFILE_ARG=0
 TARGET_ABS="$TARGET"
 
 if [[ -e "$TARGET" ]]; then
@@ -45,6 +46,22 @@ if [[ "$MODE" != "scan" && "$MODE" != "scan-all" ]]; then
 fi
 
 if [[ $# -ge 3 ]]; then
+  case "$3" in
+    quick|balanced|deep|ci)
+      PROFILE="$3"
+      HAS_PROFILE_ARG=1
+      ;;
+    -*)
+      # No profile provided; treat remaining args as passthrough CLI flags.
+      ;;
+    *)
+      echo "Error: profile must be one of quick|balanced|deep|ci" >&2
+      exit 1
+      ;;
+  esac
+fi
+
+if [[ "$HAS_PROFILE_ARG" -eq 1 ]]; then
   shift 3
 else
   shift 2
