@@ -1,6 +1,6 @@
 ---
 name: agent-scanner-skill
-description: Security scanning and triage for local Agent Skills. Use this skill to audit SKILL packages, detect prompt-injection/data-exfiltration/tool-abuse risks, and generate JSON/SARIF outputs for CI.
+description: Security scanning and triage for local Agent Skills. Use this skill to audit SKILL packages, detect prompt-injection/data-exfiltration/tool-abuse risks, and produce concise risk conclusions with reasons.
 ---
 
 # Agent Skill Scanner
@@ -22,9 +22,9 @@ Default `embedded` mode uses a compatibility `yara` shim for offline execution. 
 - Skill directory: `scan-all`
 
 2. Choose a profile.
-- `quick`: static + trigger checks, fast feedback.
-- `balanced`: add behavioral analysis for dataflow risks.
-- `deep-agent`: no standalone scanner external API call; output JSON and hand off semantic review to host agent.
+- `quick`: starts quick stage, auto-escalates to `balanced` then `deep-agent` only if findings are detected.
+- `balanced`: run at least through `balanced` (still starts with `quick`), escalates further on findings.
+- `deep-agent`: run all three stages (`quick` -> `balanced` -> `deep-agent`) for maximum confidence.
 - `ci`: SARIF output + fail-on-findings for pipelines.
 
 3. Run the wrapper.
@@ -42,16 +42,14 @@ Examples:
 ./scripts/run-scan.sh scan-all ./skills ci --recursive --output results.sarif
 ```
 
-4. Report results with actionability.
-- Always include severity counts.
-- Highlight `CRITICAL` and `HIGH` findings first.
-- Add concrete remediation steps per finding category.
+4. Read final output.
+- The wrapper prints a concise final decision:
+  - `Conclusion`: `RISK CONFIRMED` / `NO HIGH-CONFIDENCE RISK` / `NO RISK FOUND`
+  - `Reason`: final stage + severity counts + top evidence lines
+- Default behavior does not write report files for manual review flows (`quick|balanced|deep-agent`).
 
-5. Host-agent semantic review (`deep-agent`).
-- `deep-agent` generates:
-  - JSON findings: `.runtime/host-agent-review.json` (default)
-  - task prompt: `.runtime/host-agent-review-prompt.md` (default)
-- Execute the generated prompt with your host agent for evidence-based remediation.
+5. Use `ci` when you need machine-readable artifacts.
+- `ci` keeps SARIF + fail-on-findings behavior for pipelines.
 
 ## Runtime Notes
 
@@ -63,7 +61,7 @@ Default runtime mode is `embedded` (no network installs required).
 
 Security guardrail:
 - Scanner-side external API analyzers have been removed from the codebase.
-- Use `deep-agent` for semantic review without scanner external API network calls.
+- Cascading review stays local without scanner external API network calls.
 
 ## Resources
 

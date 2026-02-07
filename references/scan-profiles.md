@@ -18,19 +18,19 @@ export SKILL_SCANNER_RUNTIME=venv
 
 | Profile | Flags | Best for | Cost |
 |---|---|---|---|
-| `quick` | `--use-trigger` | Fast local checks during edits | Low |
-| `balanced` | `--use-behavioral --use-trigger` | Default manual review | Medium |
-| `deep-agent` | `--use-behavioral --use-trigger --format json` | No standalone scanner external API; hand off semantic review to Claude Code/Codex | Medium |
+| `quick` | Starts with `--use-trigger`; auto-escalates on findings | Fast local checks with automatic re-check | Low -> Medium |
+| `balanced` | Starts from `quick`, guarantees `--use-behavioral --use-trigger` stage | Default manual review with better confidence | Medium |
+| `deep-agent` | Runs full cascade (`quick` -> `balanced` -> `deep-agent`) | Maximum confidence local review | Medium |
 | `ci` | `--use-behavioral --use-trigger --format sarif --fail-on-findings` | CI gate with machine-readable output | Medium |
 
-### deep-agent Outputs
+### Manual Flow Output (`quick|balanced|deep-agent`)
 
-When using `deep-agent`, wrapper emits:
+- Wrapper prints final:
+  - `Conclusion`: whether risk is confirmed
+  - `Reason`: final stage + severity counts + key findings
+- By default no report file is written for manual flow.
 
-- JSON report (default): `.runtime/host-agent-review.json`
-- Host-agent task prompt (default): `.runtime/host-agent-review-prompt.md`
-
-If you pass `--output`, the prompt file automatically points to that JSON path.
+If you pass `--output`/`--format` in manual flow, wrapper ignores them and still prints the final conclusion.
 
 ## Optional Wheelhouse
 
@@ -51,11 +51,9 @@ export SKILL_SCANNER_INSTALL_WHEELS=1
 ## Recommended Flow
 
 1. Start with `quick` while iterating.
-2. Run `balanced` before declaring remediation complete.
-3. Use `deep-agent` when you want Claude Code/Codex host agent to do semantic review without separate scanner key setup.
+2. Use `balanced` when you want at least one behavioral verification pass.
+3. Use `deep-agent` when you want full three-stage verification.
 4. Use `ci` in pipelines with SARIF ingestion.
-
-For `deep-agent`, after scan completion ask your host agent to execute the generated prompt file directly.
 
 ## Optional Analyzer Flags
 
@@ -68,6 +66,5 @@ Note: scanner-side external API analyzers were removed from codebase for securit
 
 ## Output Strategy
 
-- Human review: `--format summary` or `--format table`
-- Automation and post-processing: `--format json`
-- GitHub code scanning: `--format sarif --output results.sarif`
+- Manual review (wrapper): use `quick|balanced|deep-agent` and read final `Conclusion` + `Reason`.
+- Automation and post-processing: use `ci` with `--output results.sarif`, or call `skill_scanner.cli.cli` directly for custom JSON/table output.

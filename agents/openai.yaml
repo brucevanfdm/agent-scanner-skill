@@ -1,4 +1,4 @@
 interface:
   display_name: "Agent Skill Scanner"
   short_description: "Security scan for Agent Skills (injection/exfiltration/tool abuse)"
-  default_prompt: "Run a balanced security scan on this skill, list CRITICAL/HIGH findings first, then provide concrete remediation steps."
+  default_prompt: "Run quick-first cascading security scan (quick -> balanced -> deep-agent on findings), then return final risk conclusion and reasons."
