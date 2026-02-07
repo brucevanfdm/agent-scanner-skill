@@ -37,7 +37,6 @@ if [[ "${SKILL_SCANNER_INSTALL_WHEELS:-0}" == "1" ]]; then
     exit 1
   fi
 
-  "$VENV_PY" -m pip install --upgrade pip setuptools wheel
   "$VENV_PY" -m pip install --no-index --find-links "$WHEEL_DIR" -r "$REQ_FILE"
 fi
 

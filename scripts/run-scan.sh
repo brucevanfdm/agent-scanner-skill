@@ -32,7 +32,7 @@ INSTALL_SCRIPT="$SCRIPT_DIR/install-scanner.sh"
 MODE="$1"
 TARGET="$2"
 PROFILE="balanced"
-HAS_PROFILE_ARG=0
+SHIFT_COUNT=2
 TARGET_ABS="$TARGET"
 
 if [[ -e "$TARGET" ]]; then
@@ -50,7 +50,7 @@ if [[ $# -ge 3 ]]; then
   case "$3" in
     quick|balanced|deep|deep-agent|ci)
       PROFILE="$3"
-      HAS_PROFILE_ARG=1
+      SHIFT_COUNT=3
       ;;
     -*)
       # No profile provided; treat remaining args as passthrough CLI flags.
@@ -62,18 +62,9 @@ if [[ $# -ge 3 ]]; then
   esac
 fi
 
-if [[ "$HAS_PROFILE_ARG" -eq 1 ]]; then
-  shift 3
-else
-  shift 2
-fi
+shift "$SHIFT_COUNT"
 
-EXTRA_ARGS=()
-HAS_EXTRA_ARGS=0
-if [[ $# -gt 0 ]]; then
-  EXTRA_ARGS=("$@")
-  HAS_EXTRA_ARGS=1
-fi
+EXTRA_ARGS=("$@")
 
 PROFILE_ARGS=()
 HOST_AGENT_MODE=0
@@ -151,29 +142,26 @@ CMD=("${PYTHON_CMD[@]}" -m skill_scanner.cli.cli "$MODE" "$TARGET_ABS" "${PROFIL
 # deep-agent mode needs a JSON output file to hand off to host-agent semantic review.
 if [[ "$HOST_AGENT_MODE" -eq 1 ]]; then
   HAS_OUTPUT_ARG=0
-  if [[ "$HAS_EXTRA_ARGS" -eq 1 ]]; then
-    for (( i=0; i<${#EXTRA_ARGS[@]}; i++ )); do
-      arg="${EXTRA_ARGS[$i]}"
-      if [[ "$arg" == "--output" || "$arg" == "-o" || "$arg" == --output=* ]]; then
-        HAS_OUTPUT_ARG=1
-        if [[ "$arg" == --output=* ]]; then
-          REVIEW_JSON_PATH="${arg#--output=}"
-        elif [[ $((i + 1)) -lt ${#EXTRA_ARGS[@]} ]]; then
-          REVIEW_JSON_PATH="${EXTRA_ARGS[$((i + 1))]}"
-        fi
-        break
+  for (( i=0; i<${#EXTRA_ARGS[@]}; i++ )); do
+    arg="${EXTRA_ARGS[$i]}"
+    if [[ "$arg" == "--output" || "$arg" == "-o" || "$arg" == --output=* ]]; then
+      HAS_OUTPUT_ARG=1
+      if [[ "$arg" == --output=* ]]; then
+        REVIEW_JSON_PATH="${arg#--output=}"
+      elif [[ $((i + 1)) -lt ${#EXTRA_ARGS[@]} ]]; then
+        REVIEW_JSON_PATH="${EXTRA_ARGS[$((i + 1))]}"
       fi
-    done
-  fi
+      break
+    fi
+  done
   if [[ "$HAS_OUTPUT_ARG" -eq 0 ]]; then
     mkdir -p "$(dirname "$HOST_AGENT_OUTPUT_PATH")"
     EXTRA_ARGS+=(--output "$HOST_AGENT_OUTPUT_PATH")
-    HAS_EXTRA_ARGS=1
     REVIEW_JSON_PATH="$HOST_AGENT_OUTPUT_PATH"
   fi
 fi
 
-if [[ "$HAS_EXTRA_ARGS" -eq 1 ]]; then
+if [[ ${#EXTRA_ARGS[@]} -gt 0 ]]; then
   CMD+=("${EXTRA_ARGS[@]}")
 fi
 

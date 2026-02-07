@@ -1,6 +1,6 @@
 ---
 name: claude-code-skill-scanner
-description: Security scanning and threat triage for local Agent Skills (Claude Code, Codex, Cursor) using a self-contained offline bundle with embedded scanner source and vendor dependencies. Use when asked to audit a SKILL.md package, detect prompt injection/data exfiltration/tool abuse, compare quick vs deep scans, or produce JSON/SARIF reports for CI and remediation in network-restricted environments.
+description: Security scanning and threat triage for local Agent Skills (Claude Code, Codex, Cursor) using a self-contained offline bundle with bundled scanner source and vendor dependencies. Use when asked to audit a SKILL.md package, detect prompt injection/data exfiltration/tool abuse, compare quick vs deep scans, or produce JSON/SARIF reports for CI and remediation in network-restricted environments.
 ---
 
 # Claude Code Skill Scanner
@@ -53,29 +53,7 @@ Examples:
 - Run `deep-agent` to generate:
   - JSON findings (default: `.runtime/host-agent-review.json`)
   - host-agent task prompt (default: `.runtime/host-agent-review-prompt.md`)
-- Then instruct Claude Code/Codex to execute the generated prompt file and complete review + remediation autonomously.
-
-Example:
-
-```bash
-./scripts/run-scan.sh scan ./my-skill deep-agent
-```
-
-Suggested instruction to Claude Code/Codex:
-
-```text
-请执行 .runtime/host-agent-review-prompt.md 中的任务，并直接完成代码修复与验证。
-```
-
-Autonomous execution template (copy/paste):
-
-```text
-1) 运行：
-   ./scripts/run-scan.sh scan <目标skill目录> deep-agent
-2) 读取：
-   .runtime/host-agent-review-prompt.md
-3) 严格按该提示完成：证据化复核 -> 高危优先修复 -> 命令验证 -> 输出变更摘要。
-```
+- Ask Claude Code/Codex to execute `.runtime/host-agent-review-prompt.md` directly for evidence-based review and remediation.
 
 ## Runtime Notes
 
