@@ -17,7 +17,7 @@
 """
 Context extractor for agent skills behavioral analysis.
 
-Extracts comprehensive security context from skill scripts for LLM analysis.
+Extracts comprehensive security context from skill scripts for security analysis.
 """
 
 import ast
@@ -51,13 +51,13 @@ class SkillScriptContext:
     has_exfiltration_chain: bool = False
     has_injection_chain: bool = False
 
-    # Evidence for LLM
+    # Evidence for downstream analysis
     all_function_calls: list[str] = field(default_factory=list)
     all_string_literals: list[str] = field(default_factory=list)
     suspicious_urls: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary for LLM prompt."""
+        """Convert to dictionary for reporting/prompt building."""
         return {
             "file_path": self.file_path,
             "function_count": len(self.functions),

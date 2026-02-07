@@ -40,7 +40,3 @@ class SkillScannerConstants:
     # Default values
     DEFAULT_MAX_FILE_SIZE_MB = 10
     DEFAULT_SCAN_TIMEOUT = 300
-    DEFAULT_LLM_MODEL = "claude-3-5-sonnet-20241022"
-    DEFAULT_LLM_MAX_TOKENS = 4000
-    DEFAULT_LLM_TEMPERATURE = 0.0
-

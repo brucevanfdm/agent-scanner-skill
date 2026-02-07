@@ -167,7 +167,7 @@ class Finding:
     line_number: int | None = None
     snippet: str | None = None
     remediation: str | None = None
-    analyzer: str | None = None  # Which analyzer produced this finding (e.g., "static", "llm", "behavioral")
+    analyzer: str | None = None  # Which analyzer produced this finding (e.g., "static", "behavioral", "trigger")
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:

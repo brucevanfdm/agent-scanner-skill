@@ -134,24 +134,11 @@ class SkillScanner:
         # Run all analyzers
         all_findings = []
         analyzer_names = []
-        validated_binary_files = set()
 
         for analyzer in self.analyzers:
             findings = analyzer.analyze(skill)
             all_findings.extend(findings)
             analyzer_names.append(analyzer.get_name())
-
-            if hasattr(analyzer, "validated_binary_files"):
-                validated_binary_files.update(analyzer.validated_binary_files)
-
-        # Post-process findings: Suppress BINARY_FILE_DETECTED for VirusTotal-validated files
-        if validated_binary_files:
-            filtered_findings = []
-            for finding in all_findings:
-                if finding.rule_id == "BINARY_FILE_DETECTED" and finding.file_path in validated_binary_files:
-                    continue
-                filtered_findings.append(finding)
-            all_findings = filtered_findings
 
         scan_duration = time.time() - start_time
 

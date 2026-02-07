@@ -152,13 +152,13 @@ AISUBTECH_TAXONOMY: dict[str, str] = {
     "AISubtech-8.1.1": "Presence Detection",
     # AITech-8.2: Data Exfiltration / Exposure
     "AISubtech-8.2.1": "Training Data Exposure",
-    "AISubtech-8.2.2": "LLM Data Leakage",
+    "AISubtech-8.2.2": "Model Data Leakage",
     "AISubtech-8.2.3": "Data Exfiltration via Agent Tooling",
     # AITech-8.3: Information Disclosure
     "AISubtech-8.3.1": "Tool Metadata Exposure",
     "AISubtech-8.3.2": "System Information Leakage",
     # AITech-8.4: Prompt/Meta Extraction
-    "AISubtech-8.4.1": "System LLM Prompt Leakage",
+    "AISubtech-8.4.1": "System Prompt Leakage",
     # AITech-9.1: Model or Agentic System Manipulation
     "AISubtech-9.1.1": "Code Execution",
     "AISubtech-9.1.2": "Unauthorized or Unsolicited System Access",

@@ -19,8 +19,6 @@ Command-line interface for the Skill Scanner.
 """
 
 import argparse
-import asyncio
-import os
 import sys
 from pathlib import Path
 
@@ -29,25 +27,6 @@ from ..core.analyzers.static import StaticAnalyzer
 from ..core.reporters.json_reporter import JSONReporter
 from ..core.reporters.sarif_reporter import SARIFReporter
 from ..core.scanner import SkillScanner
-
-# Optional LLM analyzer
-try:
-    from ..core.analyzers.llm_analyzer import LLMAnalyzer
-
-    LLM_AVAILABLE = True
-except (ImportError, ModuleNotFoundError):
-    LLM_AVAILABLE = False
-    LLMAnalyzer = None
-
-# Optional Meta analyzer
-try:
-    from ..core.analyzers.meta_analyzer import MetaAnalyzer, apply_meta_analysis_to_results
-
-    META_AVAILABLE = True
-except (ImportError, ModuleNotFoundError):
-    META_AVAILABLE = False
-    MetaAnalyzer = None
-    apply_meta_analysis_to_results = None
 
 from ..core.loader import SkillLoadError
 from ..core.reporters.markdown_reporter import MarkdownReporter
@@ -68,7 +47,7 @@ def _build_status_printer(output_format: str):
 
 
 def _initialize_analyzers(args, status_print):
-    """Build analyzer list and optional meta analyzer from CLI args."""
+    """Build analyzer list from CLI args."""
     analyzers = [
         StaticAnalyzer(
             yara_mode=args.yara_mode,
@@ -85,61 +64,6 @@ def _initialize_analyzers(args, status_print):
         except Exception as e:
             print(f"Warning: Could not initialize behavioral analyzer: {e}", file=sys.stderr)
 
-    if args.use_llm:
-        if not LLM_AVAILABLE:
-            print("Warning: LLM analyzer requested but dependencies not installed.", file=sys.stderr)
-            print("Install with: pip install litellm anthropic openai", file=sys.stderr)
-        else:
-            try:
-                # SKILL_SCANNER_* env vars are preferred; provider env fallback is handled in ProviderConfig
-                llm_analyzer = LLMAnalyzer(
-                    model=os.getenv("SKILL_SCANNER_LLM_MODEL"),
-                    api_key=os.getenv("SKILL_SCANNER_LLM_API_KEY"),
-                    base_url=os.getenv("SKILL_SCANNER_LLM_BASE_URL"),
-                    api_version=os.getenv("SKILL_SCANNER_LLM_API_VERSION"),
-                    provider=args.llm_provider,
-                )
-                analyzers.append(llm_analyzer)
-                status_print(f"Using LLM analyzer with model: {llm_analyzer.model}")
-            except Exception as e:
-                print(f"Warning: Could not initialize LLM analyzer: {e}", file=sys.stderr)
-
-    if args.use_virustotal:
-        vt_api_key = args.vt_api_key or os.getenv("VIRUSTOTAL_API_KEY")
-        if not vt_api_key:
-            print("Warning: VirusTotal requested but no API key provided.", file=sys.stderr)
-            print("Set VIRUSTOTAL_API_KEY environment variable or use --vt-api-key", file=sys.stderr)
-        else:
-            try:
-                from ..core.analyzers.virustotal_analyzer import VirusTotalAnalyzer
-
-                vt_analyzer = VirusTotalAnalyzer(
-                    api_key=vt_api_key,
-                    enabled=True,
-                    upload_files=args.vt_upload_files,
-                )
-                analyzers.append(vt_analyzer)
-                mode = "with file uploads" if args.vt_upload_files else "hash-only mode"
-                status_print(f"Using VirusTotal binary file scanner ({mode})")
-            except Exception as e:
-                print(f"Warning: Could not initialize VirusTotal analyzer: {e}", file=sys.stderr)
-
-    if args.use_aidefense:
-        aidefense_api_key = args.aidefense_api_key or os.getenv("AI_DEFENSE_API_KEY")
-        if not aidefense_api_key:
-            print("Warning: AI Defense requested but no API key provided.", file=sys.stderr)
-            print("Set AI_DEFENSE_API_KEY environment variable or use --aidefense-api-key", file=sys.stderr)
-        else:
-            try:
-                from ..core.analyzers.aidefense_analyzer import AIDefenseAnalyzer
-
-                aidefense_api_url = args.aidefense_api_url or os.getenv("AI_DEFENSE_API_URL")
-                aidefense_analyzer = AIDefenseAnalyzer(api_key=aidefense_api_key, api_url=aidefense_api_url)
-                analyzers.append(aidefense_analyzer)
-                status_print("Using AI Defense analyzer")
-            except Exception as e:
-                print(f"Warning: Could not initialize AI Defense analyzer: {e}", file=sys.stderr)
-
     if args.use_trigger:
         try:
             from ..core.analyzers.trigger_analyzer import TriggerAnalyzer
@@ -150,33 +74,7 @@ def _initialize_analyzers(args, status_print):
         except Exception as e:
             print(f"Warning: Could not initialize Trigger analyzer: {e}", file=sys.stderr)
 
-    meta_analyzer = None
-    if args.enable_meta:
-        if not META_AVAILABLE:
-            print("Warning: Meta-analyzer requested but dependencies not installed.", file=sys.stderr)
-            print("Install with: pip install litellm", file=sys.stderr)
-        elif len(analyzers) < 2:
-            print("Warning: Meta-analysis requires at least 2 analyzers. Skipping meta-analysis.", file=sys.stderr)
-        else:
-            try:
-                # Priority: meta-specific env vars > scanner-wide env vars
-                meta_api_key = os.getenv("SKILL_SCANNER_META_LLM_API_KEY") or os.getenv("SKILL_SCANNER_LLM_API_KEY")
-                meta_model = os.getenv("SKILL_SCANNER_META_LLM_MODEL") or os.getenv("SKILL_SCANNER_LLM_MODEL")
-                meta_base_url = os.getenv("SKILL_SCANNER_META_LLM_BASE_URL") or os.getenv("SKILL_SCANNER_LLM_BASE_URL")
-                meta_api_version = os.getenv("SKILL_SCANNER_META_LLM_API_VERSION") or os.getenv(
-                    "SKILL_SCANNER_LLM_API_VERSION"
-                )
-                meta_analyzer = MetaAnalyzer(
-                    model=meta_model,
-                    api_key=meta_api_key,
-                    base_url=meta_base_url,
-                    api_version=meta_api_version,
-                )
-                status_print("Using Meta-Analyzer for false positive filtering and finding prioritization")
-            except Exception as e:
-                print(f"Warning: Could not initialize Meta-Analyzer: {e}", file=sys.stderr)
-
-    return analyzers, meta_analyzer
+    return analyzers
 
 
 def _generate_and_output_report(result_or_report, args, is_multi_skill=False):
@@ -220,34 +118,6 @@ def _generate_and_output_report(result_or_report, args, is_multi_skill=False):
     return output
 
 
-def _run_meta_analysis_on_result(scanner, meta_analyzer, result):
-    """Run meta-analysis for a single scan result and update it in place."""
-    skill = scanner.loader.load_skill(Path(result.skill_directory))
-
-    meta_result = asyncio.run(
-        meta_analyzer.analyze_with_findings(
-            skill=skill,
-            findings=result.findings,
-            analyzers_used=result.analyzers_used,
-        )
-    )
-
-    filtered_findings = apply_meta_analysis_to_results(
-        original_findings=result.findings,
-        meta_result=meta_result,
-        skill=skill,
-    )
-
-    result.findings = filtered_findings
-    result.analyzers_used.append("meta_analyzer")
-
-    fp_count = sum(
-        1 for f in filtered_findings if f.metadata and f.metadata.get("meta_false_positive") is True
-    )
-    new_count = sum(1 for f in filtered_findings if f.analyzer == "meta")
-    return fp_count, new_count
-
-
 def scan_command(args):
     """Handle the scan command for a single skill."""
     skill_dir = Path(args.skill_directory)
@@ -257,26 +127,13 @@ def scan_command(args):
         return 1
 
     status_print = _build_status_printer(args.format)
-    analyzers, meta_analyzer = _initialize_analyzers(args, status_print)
+    analyzers = _initialize_analyzers(args, status_print)
 
     scanner = SkillScanner(analyzers=analyzers)
 
     try:
         # Scan the skill
         result = scanner.scan_skill(skill_dir)
-
-        # Run meta-analysis if enabled and we have findings
-        if meta_analyzer and result.findings:
-            status_print("Running meta-analysis to filter false positives...")
-            try:
-                fp_count, new_count = _run_meta_analysis_on_result(scanner, meta_analyzer, result)
-                status_print(
-                    f"Meta-analysis complete: {fp_count} findings marked as likely false positives, {new_count} new threats detected"
-                )
-
-            except Exception as e:
-                print(f"Warning: Meta-analysis failed: {e}", file=sys.stderr)
-                print("Continuing with original findings.", file=sys.stderr)
 
         # Generate and output report
         _generate_and_output_report(result, args, is_multi_skill=False)
@@ -304,7 +161,7 @@ def scan_all_command(args):
         return 1
 
     status_print = _build_status_printer(args.format)
-    analyzers, meta_analyzer = _initialize_analyzers(args, status_print)
+    analyzers = _initialize_analyzers(args, status_print)
 
     scanner = SkillScanner(analyzers=analyzers)
 
@@ -316,28 +173,6 @@ def scan_all_command(args):
         if report.total_skills_scanned == 0:
             print("No skills found to scan.", file=sys.stderr)
             return 1
-
-        # Run meta-analysis on each skill's results if enabled
-        if meta_analyzer:
-            status_print("Running meta-analysis on scan results...")
-            total_fp_filtered = 0
-            total_new_threats = 0
-
-            for result in report.scan_results:
-                if result.findings:
-                    try:
-                        fp_count, new_count = _run_meta_analysis_on_result(scanner, meta_analyzer, result)
-                        total_fp_filtered += fp_count
-                        total_new_threats += new_count
-
-                    except Exception as e:
-                        print(f"Warning: Meta-analysis failed for {result.skill_name}: {e}", file=sys.stderr)
-
-            status_print(
-                f"Meta-analysis complete: {total_fp_filtered} findings marked as likely false positives, {total_new_threats} new threats detected"
-            )
-
-            report.recalculate_totals()
 
         # Generate and output report
         _generate_and_output_report(report, args, is_multi_skill=True)
@@ -371,53 +206,12 @@ def list_analyzers_command(args):
     print("   - Usage: --use-behavioral")
     print("")
 
-    print("3. virustotal_analyzer [OK] Available (optional)")
-    print("   - Scans binary files (images, PDFs, archives) using VirusTotal")
-    print("   - Hash-based malware detection via VirusTotal API")
-    print("   - Excludes code files (.py, .js, .md, etc.)")
-    print("   - Requires VirusTotal API key")
-    print("   - Usage: --use-virustotal --vt-api-key YOUR_KEY")
-    print("")
-
-    print("4. aidefense_analyzer [OK] Available (optional)")
-    print("   - Enterprise-grade threat detection via Cisco AI Defense API")
-    print("   - Analyzes prompts, instructions, markdown, and code files")
-    print("   - Detects prompt injection, data exfiltration, tool poisoning")
-    print("   - Requires Cisco AI Defense API key")
-    print("   - Usage: --use-aidefense --aidefense-api-key YOUR_KEY")
-    print("")
-
-    if LLM_AVAILABLE:
-        print("5. llm_analyzer [OK] Available")
-        print("   - Semantic analysis using LLMs as judges")
-        print("   - Context-aware threat detection")
-        print("   - Understands code intent beyond patterns")
-        print("   - Usage: --use-llm")
-        print("")
-    else:
-        print("5. llm_analyzer [WARNING] Not installed")
-        print("   - Install with: pip install litellm anthropic openai")
-        print("")
-
-    print("6. trigger_analyzer [OK] Available")
+    print("3. trigger_analyzer [OK] Available")
     print("   - Detects overly generic skill descriptions")
     print("   - Identifies trigger hijacking risks")
     print("   - Checks description specificity and keyword baiting")
     print("   - Usage: --use-trigger")
     print("")
-
-    if META_AVAILABLE:
-        print("7. meta_analyzer [OK] Available")
-        print("   - Second-pass LLM analysis on findings from other analyzers")
-        print("   - Filters false positives using contextual understanding")
-        print("   - Prioritizes findings by actual exploitability")
-        print("   - Detects threats other analyzers missed")
-        print("   - Usage: --enable-meta (requires 2+ analyzers)")
-        print("")
-    else:
-        print("7. meta_analyzer [WARNING] Not installed")
-        print("   - Install with: pip install litellm")
-        print("")
 
     return 0
 
@@ -519,36 +313,9 @@ def _add_common_scan_arguments(parser):
     )
     parser.add_argument("--use-behavioral", action="store_true", help="Enable behavioral dataflow analysis")
     parser.add_argument(
-        "--use-llm", action="store_true", help="Enable LLM-based semantic analysis (requires API key)"
-    )
-    parser.add_argument(
-        "--use-virustotal", action="store_true", help="Enable VirusTotal binary file scanning (requires API key)"
-    )
-    parser.add_argument("--vt-api-key", help="VirusTotal API key (or set VIRUSTOTAL_API_KEY environment variable)")
-    parser.add_argument(
-        "--vt-upload-files",
-        action="store_true",
-        help="Upload unknown files to VirusTotal (default: hash-only lookup for privacy)",
-    )
-    parser.add_argument(
-        "--use-aidefense", action="store_true", help="Enable AI Defense analyzer (requires API key)"
-    )
-    parser.add_argument(
-        "--aidefense-api-key", help="AI Defense API key (or set AI_DEFENSE_API_KEY environment variable)"
-    )
-    parser.add_argument("--aidefense-api-url", help="AI Defense API URL (optional, defaults to US region)")
-    parser.add_argument(
-        "--llm-provider", choices=["anthropic", "openai"], default="anthropic", help="LLM provider (default: anthropic)"
-    )
-    parser.add_argument(
         "--use-trigger",
         action="store_true",
         help="Enable trigger specificity analysis (detects overly generic descriptions)",
-    )
-    parser.add_argument(
-        "--enable-meta",
-        action="store_true",
-        help="Enable meta-analysis for false positive filtering and finding prioritization (requires 2+ analyzers including LLM)",
     )
     parser.add_argument(
         "--yara-mode",
@@ -583,17 +350,14 @@ Examples:
   # Scan with behavioral analysis (dataflow tracking)
   skill-scanner scan /path/to/skill --use-behavioral
 
-  # Scan with all engines (static + behavioral + LLM)
-  skill-scanner scan /path/to/skill --use-behavioral --use-llm
-
   # Scan with JSON output
   skill-scanner scan /path/to/skill --format json
 
   # Scan all skills in a directory
   skill-scanner scan-all /path/to/skills
 
-  # Scan recursively with all engines
-  skill-scanner scan-all /path/to/skills --recursive --use-behavioral --use-llm
+  # Scan recursively with static + behavioral analyzers
+  skill-scanner scan-all /path/to/skills --recursive --use-behavioral
 
   # List available analyzers
   skill-scanner list-analyzers

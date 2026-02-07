@@ -30,11 +30,10 @@ from .cisco_ai_taxonomy import (
     is_valid_aisubtech,
     is_valid_aitech,
 )
-from .threats import LLM_THREAT_MAPPING, YARA_THREAT_MAPPING, ThreatMapping
+from .threats import YARA_THREAT_MAPPING, ThreatMapping
 
 __all__ = [
     "ThreatMapping",
-    "LLM_THREAT_MAPPING",
     "YARA_THREAT_MAPPING",
     "AITECH_TAXONOMY",
     "AISUBTECH_TAXONOMY",

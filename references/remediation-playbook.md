@@ -29,5 +29,5 @@
 
 1. Apply smallest safe patch.
 2. Re-run `balanced` scan.
-3. Re-run `deep` scan if used previously.
+3. Re-run `deep-agent` scan if semantic re-validation is needed.
 4. Confirm no new `CRITICAL`/`HIGH` findings were introduced.

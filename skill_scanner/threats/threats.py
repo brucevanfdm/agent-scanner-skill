@@ -29,57 +29,6 @@ from typing import Any
 class ThreatMapping:
     """Mapping of threat names to AITech Taxonomy classifications with severity."""
 
-    # LLM Analyzer Threats
-    LLM_THREATS = {
-        "PROMPT INJECTION": {
-            "scanner_category": "PROMPT INJECTION",
-            "severity": "HIGH",
-            "aitech": "AITech-1.1",
-            "aitech_name": "Direct Prompt Injection",
-            "aisubtech": "AISubtech-1.1.1",
-            "aisubtech_name": "Instruction Manipulation (Direct Prompt Injection)",
-            "description": "Explicit attempts to override, replace, or modify the model's system instructions, "
-            "operational directives, or behavioral guidelines through direct user input.",
-        },
-        "DATA EXFILTRATION": {
-            "scanner_category": "SECURITY VIOLATION",
-            "severity": "HIGH",
-            "aitech": "AITech-8.2",
-            "aitech_name": "Data Exfiltration / Exposure",
-            "aisubtech": "AISubtech-8.2.3",
-            "aisubtech_name": "Data Exfiltration via Agent Tooling",
-            "description": "Unintentional and/or unauthorized exposure or exfiltration of sensitive information, "
-            "through exploitation of agent tools, integrations, or capabilities.",
-        },
-        "TOOL POISONING": {
-            "scanner_category": "SUSPICIOUS CODE EXECUTION",
-            "severity": "HIGH",
-            "aitech": "AITech-12.1",
-            "aitech_name": "Tool Exploitation",
-            "aisubtech": "AISubtech-12.1.2",
-            "aisubtech_name": "Tool Poisoning",
-            "description": "Corrupting, modifying, or degrading the functionality, outputs, or behavior of tools used by agents through data poisoning, configuration tampering, or behavioral manipulation.",
-        },
-        "TOOL SHADOWING": {
-            "scanner_category": "SECURITY VIOLATION",
-            "severity": "HIGH",
-            "aitech": "AITech-12.1",
-            "aitech_name": "Tool Exploitation",
-            "aisubtech": "AISubtech-12.1.4",
-            "aisubtech_name": "Tool Shadowing",
-            "description": "Disguising, substituting or duplicating legitimate tools within an agent, enabling malicious tools with identical or similar identifiers to intercept or replace trusted tool calls.",
-        },
-        "COMMAND INJECTION": {
-            "scanner_category": "INJECTION ATTACK",
-            "severity": "CRITICAL",
-            "aitech": "AITech-9.1",
-            "aitech_name": "Model or Agentic System Manipulation",
-            "aisubtech": "AISubtech-9.1.4",
-            "aisubtech_name": "Injection Attacks (SQL, Command Execution, XSS)",
-            "description": "Injecting malicious payloads such as command sequences into skills that process model or user input, leading to remote code execution or compromise.",
-        },
-    }
-
     # YARA/Static Analyzer Threats
     YARA_THREATS = {
         "COMMAND INJECTION": {
@@ -237,7 +186,7 @@ class ThreatMapping:
             "aitech_name": "Direct Prompt Injection",
             "aisubtech": "AISubtech-1.1.1",
             "aisubtech_name": "Instruction Manipulation",
-            "description": "Malicious manipulation of tool metadata or descriptions that mislead the LLM.",
+            "description": "Malicious manipulation of tool metadata or descriptions that mislead the model.",
         },
         "RESOURCE EXHAUSTION": {
             "scanner_category": "RESOURCE ABUSE",
@@ -256,7 +205,7 @@ class ThreatMapping:
         Get the AITech Taxonomy mapping for a given threat.
 
         Args:
-            analyzer: The analyzer type ('llm', 'yara', 'behavioral')
+            analyzer: The analyzer type ('static', 'yara', 'behavioral')
             threat_name: The threat name from the analyzer
 
         Returns:
@@ -266,7 +215,6 @@ class ThreatMapping:
             ValueError: If analyzer or threat_name is not found
         """
         analyzer_map: dict[str, dict[str, dict[str, Any]]] = {
-            "llm": cls.LLM_THREATS,
             "yara": cls.YARA_THREATS,
             "behavioral": cls.BEHAVIORAL_THREATS,
             "static": cls.YARA_THREATS,  # Static analyzer uses same taxonomy as YARA
@@ -334,7 +282,7 @@ class ThreatMapping:
             Dictionary containing threat mapping information
         """
         # Search through all threat dictionaries to find matching AITech code
-        threat_dicts: list[dict[str, dict[str, Any]]] = [cls.LLM_THREATS, cls.YARA_THREATS, cls.BEHAVIORAL_THREATS]
+        threat_dicts: list[dict[str, dict[str, Any]]] = [cls.YARA_THREATS, cls.BEHAVIORAL_THREATS]
         for threat_dict in threat_dicts:
             for threat_name, threat_info in threat_dict.items():
                 if threat_info.get("aitech") == aitech_code:
@@ -365,7 +313,6 @@ def _create_simple_mapping(threats_dict):
 
 
 # Simplified mappings for analyzers (includes severity, category, and type)
-LLM_THREAT_MAPPING = _create_simple_mapping(ThreatMapping.LLM_THREATS)
 YARA_THREAT_MAPPING = _create_simple_mapping(ThreatMapping.YARA_THREATS)
 BEHAVIORAL_THREAT_MAPPING = _create_simple_mapping(ThreatMapping.BEHAVIORAL_THREATS)
 STATIC_THREAT_MAPPING = YARA_THREAT_MAPPING  # Static uses same as YARA

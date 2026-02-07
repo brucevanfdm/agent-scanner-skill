@@ -14,17 +14,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Behavioral Analysis Package for Agent Skills.
+"""Behavioral analysis package marker."""
 
-This package provides enhanced behavioral analysis capabilities including:
-- Alignment verification between skill description and code behavior
-- LLM-powered semantic analysis
-- Cross-file analysis and call graph tracking
-
-Components:
-- alignment/: Alignment verification layer for skill description vs code
-"""
-
-from .alignment import AlignmentOrchestrator
-
-__all__ = ["AlignmentOrchestrator"]
+__all__: list[str] = []

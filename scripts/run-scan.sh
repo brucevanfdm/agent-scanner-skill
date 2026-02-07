@@ -4,7 +4,7 @@ set -euo pipefail
 usage() {
   cat <<'USAGE'
 Usage:
-  ./scripts/run-scan.sh <scan|scan-all> <target_path> [quick|balanced|deep|deep-agent|ci] [extra args...]
+  ./scripts/run-scan.sh <scan|scan-all> <target_path> [quick|balanced|deep-agent|ci] [extra args...]
 
 Examples:
   ./scripts/run-scan.sh scan ./my-skill quick
@@ -48,7 +48,7 @@ fi
 
 if [[ $# -ge 3 ]]; then
   case "$3" in
-    quick|balanced|deep|deep-agent|ci)
+    quick|balanced|deep-agent|ci)
       PROFILE="$3"
       SHIFT_COUNT=3
       ;;
@@ -56,7 +56,7 @@ if [[ $# -ge 3 ]]; then
       # No profile provided; treat remaining args as passthrough CLI flags.
       ;;
     *)
-      echo "Error: profile must be one of quick|balanced|deep|deep-agent|ci" >&2
+      echo "Error: profile must be one of quick|balanced|deep-agent|ci" >&2
       exit 1
       ;;
   esac
@@ -78,11 +78,8 @@ case "$PROFILE" in
   balanced)
     PROFILE_ARGS+=(--use-behavioral --use-trigger --format summary)
     ;;
-  deep)
-    PROFILE_ARGS+=(--use-behavioral --use-trigger --use-llm --enable-meta --format summary)
-    ;;
   deep-agent)
-    # Host-agent mode: do not call external LLM APIs from scanner.
+    # Host-agent mode: do not call external model APIs from scanner.
     PROFILE_ARGS+=(--use-behavioral --use-trigger --format json)
     HOST_AGENT_MODE=1
     ;;
@@ -90,7 +87,7 @@ case "$PROFILE" in
     PROFILE_ARGS+=(--use-behavioral --use-trigger --format sarif --fail-on-findings)
     ;;
   *)
-    echo "Error: profile must be one of quick|balanced|deep|deep-agent|ci" >&2
+    echo "Error: profile must be one of quick|balanced|deep-agent|ci" >&2
     exit 1
     ;;
 esac
@@ -179,7 +176,7 @@ if [[ "$HOST_AGENT_MODE" -eq 1 ]]; then
   cat > "$HOST_AGENT_PROMPT_PATH" <<EOF
 # Host-Agent Semantic Security Review Task (deep-agent)
 
-You are running in the same repository and should complete this task end-to-end without calling external LLM APIs.
+You are running in the same repository and should complete this task end-to-end without calling external model APIs.
 
 ## Inputs
 - Scan JSON report: \`$REVIEW_JSON_ABS\`
@@ -203,12 +200,12 @@ You are running in the same repository and should complete this task end-to-end 
 4. Verification commands and results
 
 ## Constraints
-- Do not use external LLM APIs from scanner codepaths for this task.
+- Do not use external model APIs from scanner codepaths for this task.
 - Ground all conclusions in repository evidence and scanner output.
 EOF
 
   echo ""
-  echo "[deep-agent] Semantic handoff (no separate LLM API key required):"
+  echo "[deep-agent] Semantic handoff (no separate external API key required):"
   echo "1) Scan JSON: $REVIEW_JSON_ABS"
   echo "2) Host-agent prompt: $HOST_AGENT_PROMPT_PATH"
   echo "3) Execute that prompt with your host agent for autonomous review + remediation."
