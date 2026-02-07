@@ -179,6 +179,49 @@ def _initialize_analyzers(args, status_print):
     return analyzers, meta_analyzer
 
 
+def _run_meta_analysis_on_result(scanner, meta_analyzer, result):
+    """Run meta-analysis for a single scan result and update it in place."""
+    skill = scanner.loader.load_skill(Path(result.skill_directory))
+
+    meta_result = asyncio.run(
+        meta_analyzer.analyze_with_findings(
+            skill=skill,
+            findings=result.findings,
+            analyzers_used=result.analyzers_used,
+        )
+    )
+
+    filtered_findings = apply_meta_analysis_to_results(
+        original_findings=result.findings,
+        meta_result=meta_result,
+        skill=skill,
+    )
+
+    result.findings = filtered_findings
+    result.analyzers_used.append("meta_analyzer")
+
+    fp_count = sum(
+        1 for f in filtered_findings if f.metadata and f.metadata.get("meta_false_positive") is True
+    )
+    new_count = sum(1 for f in filtered_findings if f.analyzer == "meta")
+    return fp_count, new_count
+
+
+def _recalculate_report_totals(report) -> None:
+    """Recalculate aggregate counters after findings are modified."""
+    report.total_findings = sum(len(r.findings) for r in report.scan_results)
+    report.critical_count = sum(
+        1 for r in report.scan_results for f in r.findings if f.severity.value == "CRITICAL"
+    )
+    report.high_count = sum(1 for r in report.scan_results for f in r.findings if f.severity.value == "HIGH")
+    report.medium_count = sum(
+        1 for r in report.scan_results for f in r.findings if f.severity.value == "MEDIUM"
+    )
+    report.low_count = sum(1 for r in report.scan_results for f in r.findings if f.severity.value == "LOW")
+    report.info_count = sum(1 for r in report.scan_results for f in r.findings if f.severity.value == "INFO")
+    report.safe_count = sum(1 for r in report.scan_results if r.is_safe)
+
+
 def scan_command(args):
     """Handle the scan command for a single skill."""
     skill_dir = Path(args.skill_directory)
@@ -200,35 +243,7 @@ def scan_command(args):
         if meta_analyzer and result.findings:
             status_print("Running meta-analysis to filter false positives...")
             try:
-                # Load the skill for context
-                skill = scanner.loader.load_skill(skill_dir)
-
-                # Run meta-analysis asynchronously
-                meta_result = asyncio.run(
-                    meta_analyzer.analyze_with_findings(
-                        skill=skill,
-                        findings=result.findings,
-                        analyzers_used=result.analyzers_used,
-                    )
-                )
-
-                # Apply meta-analysis results
-                filtered_findings = apply_meta_analysis_to_results(
-                    original_findings=result.findings,
-                    meta_result=meta_result,
-                    skill=skill,
-                )
-
-                # Update result with filtered findings
-                result.findings = filtered_findings
-                result.analyzers_used.append("meta_analyzer")
-
-                fp_count = sum(
-                    1
-                    for f in filtered_findings
-                    if f.metadata and f.metadata.get("meta_false_positive") is True
-                )
-                new_count = sum(1 for f in filtered_findings if f.analyzer == "meta")
+                fp_count, new_count = _run_meta_analysis_on_result(scanner, meta_analyzer, result)
                 status_print(
                     f"Meta-analysis complete: {fp_count} findings marked as likely false positives, {new_count} new threats detected"
                 )
@@ -306,39 +321,9 @@ def scan_all_command(args):
             for result in report.scan_results:
                 if result.findings:
                     try:
-                        # Load the skill for context
-                        skill_dir = Path(result.skill_directory)
-                        skill = scanner.loader.load_skill(skill_dir)
-
-                        # Run meta-analysis asynchronously
-                        meta_result = asyncio.run(
-                            meta_analyzer.analyze_with_findings(
-                                skill=skill,
-                                findings=result.findings,
-                                analyzers_used=result.analyzers_used,
-                            )
-                        )
-
-                        # Apply meta-analysis results
-                        filtered_findings = apply_meta_analysis_to_results(
-                            original_findings=result.findings,
-                            meta_result=meta_result,
-                            skill=skill,
-                        )
-
-                        # Track statistics
-                        fp_count = sum(
-                            1
-                            for f in filtered_findings
-                            if f.metadata and f.metadata.get("meta_false_positive") is True
-                        )
-                        new_count = sum(1 for f in filtered_findings if f.analyzer == "meta")
+                        fp_count, new_count = _run_meta_analysis_on_result(scanner, meta_analyzer, result)
                         total_fp_filtered += fp_count
                         total_new_threats += new_count
-
-                        # Update result
-                        result.findings = filtered_findings
-                        result.analyzers_used.append("meta_analyzer")
 
                     except Exception as e:
                         print(f"Warning: Meta-analysis failed for {result.skill_name}: {e}", file=sys.stderr)
@@ -347,18 +332,7 @@ def scan_all_command(args):
                 f"Meta-analysis complete: {total_fp_filtered} findings marked as likely false positives, {total_new_threats} new threats detected"
             )
 
-            # Recalculate report totals
-            report.total_findings = sum(len(r.findings) for r in report.scan_results)
-            report.critical_count = sum(
-                1 for r in report.scan_results for f in r.findings if f.severity.value == "CRITICAL"
-            )
-            report.high_count = sum(1 for r in report.scan_results for f in r.findings if f.severity.value == "HIGH")
-            report.medium_count = sum(
-                1 for r in report.scan_results for f in r.findings if f.severity.value == "MEDIUM"
-            )
-            report.low_count = sum(1 for r in report.scan_results for f in r.findings if f.severity.value == "LOW")
-            report.info_count = sum(1 for r in report.scan_results for f in r.findings if f.severity.value == "INFO")
-            report.safe_count = sum(1 for r in report.scan_results if r.is_safe)
+            _recalculate_report_totals(report)
 
         # Generate report based on format
         if args.format == "json":
