@@ -1,0 +1,4 @@
+interface:
+  display_name: "Claude Code Skill Scanner"
+  short_description: "Scan agent skills for security risks"
+  default_prompt: "Scan this skill for security issues"

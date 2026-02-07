@@ -1,0 +1,12 @@
+# Optional full dependency wheelhouse (for environments that need real YARA/API extras)
+# Build with scripts/build-vendor-wheelhouse.sh on a connected machine.
+PyYAML>=6.0.1
+python-frontmatter>=1.0.0
+tabulate>=0.9.0
+yara-python>=4.5.4
+click>=8.1.0
+rich>=13.0.0
+httpx>=0.28.1
+fastapi>=0.125.0
+uvicorn[standard]>=0.29.0
+python-multipart>=0.0.6
