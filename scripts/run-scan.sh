@@ -25,7 +25,7 @@ fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILL_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-EMBEDDED_DIR="$SKILL_DIR/embedded"
+SCANNER_PKG_DIR="$SKILL_DIR/skill_scanner"
 VENDOR_PY_DIR="$SKILL_DIR/vendor/python"
 INSTALL_SCRIPT="$SCRIPT_DIR/install-scanner.sh"
 
@@ -105,8 +105,8 @@ case "$PROFILE" in
     ;;
 esac
 
-if [[ ! -d "$EMBEDDED_DIR/skill_scanner" ]]; then
-  echo "Error: embedded source not found: $EMBEDDED_DIR/skill_scanner" >&2
+if [[ ! -d "$SCANNER_PKG_DIR" ]]; then
+  echo "Error: scanner source not found: $SCANNER_PKG_DIR" >&2
   exit 1
 fi
 
@@ -139,9 +139,9 @@ else
 fi
 
 if [[ -n "${PYTHONPATH:-}" ]]; then
-  export PYTHONPATH="$VENDOR_PY_DIR:$EMBEDDED_DIR:$PYTHONPATH"
+  export PYTHONPATH="$VENDOR_PY_DIR:$SKILL_DIR:$PYTHONPATH"
 else
-  export PYTHONPATH="$VENDOR_PY_DIR:$EMBEDDED_DIR"
+  export PYTHONPATH="$VENDOR_PY_DIR:$SKILL_DIR"
 fi
 
 cd "$SKILL_DIR"

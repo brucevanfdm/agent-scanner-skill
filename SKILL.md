@@ -9,7 +9,7 @@ Use this skill to run security scans against Agent Skill packages.
 
 The skill is self-contained: copy this skill directory into your Claude Code `skills/` directory. It includes:
 
-- embedded scanner source: `embedded/skill_scanner/`
+- bundled scanner source: `skill_scanner/`
 - vendor runtime modules: `vendor/python/`
 - optional wheelhouse path: `vendor/wheels/`
 

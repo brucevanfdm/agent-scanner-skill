@@ -2,7 +2,7 @@
 
 ## Runtime Modes
 
-- `embedded` (default): runs bundled `embedded/skill_scanner` with `vendor/python` compatibility modules.
+- `embedded` (default): runs bundled `skill_scanner` with `vendor/python` compatibility modules.
 - `embedded` mode includes a `yara` compatibility shim (native YARA matching disabled).
 - `venv`: runs inside `.runtime/venv`; optionally installs from local wheelhouse only.
 
