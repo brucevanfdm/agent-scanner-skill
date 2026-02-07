@@ -19,4 +19,4 @@ This skill supports two offline modes:
 ./scripts/build-vendor-wheelhouse.sh
 ```
 
-Then copy the whole `claude-code-skill-scanner/` folder to offline environments.
+Then copy the whole skill folder to offline environments.

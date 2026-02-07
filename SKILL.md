@@ -7,7 +7,7 @@ description: Security scanning and threat triage for local Agent Skills (Claude 
 
 Use this skill to run security scans against Agent Skill packages.
 
-The skill is self-contained: copy the `claude-code-skill-scanner/` directory into your Claude Code `skills/` directory. It includes:
+The skill is self-contained: copy this skill directory into your Claude Code `skills/` directory. It includes:
 
 - embedded scanner source: `embedded/skill_scanner/`
 - vendor runtime modules: `vendor/python/`
@@ -64,16 +64,16 @@ Example:
 Suggested instruction to Claude Code/Codex:
 
 ```text
-请执行 claude-code-skill-scanner/.runtime/host-agent-review-prompt.md 中的任务，并直接完成代码修复与验证。
+请执行 .runtime/host-agent-review-prompt.md 中的任务，并直接完成代码修复与验证。
 ```
 
 Autonomous execution template (copy/paste):
 
 ```text
 1) 运行：
-   ./claude-code-skill-scanner/scripts/run-scan.sh scan <目标skill目录> deep-agent
+   ./scripts/run-scan.sh scan <目标skill目录> deep-agent
 2) 读取：
-   claude-code-skill-scanner/.runtime/host-agent-review-prompt.md
+   .runtime/host-agent-review-prompt.md
 3) 严格按该提示完成：证据化复核 -> 高危优先修复 -> 命令验证 -> 输出变更摘要。
 ```
 
