@@ -1,34 +1,34 @@
 ---
 name: claude-code-skill-scanner
-description: Security scanning and threat triage for local Agent Skills (Claude Code, Codex, Cursor) using a self-contained offline bundle with bundled scanner source and vendor dependencies. Use when asked to audit a SKILL.md package, detect prompt injection/data exfiltration/tool abuse, compare quick vs deep scans, or produce JSON/SARIF reports for CI and remediation in network-restricted environments.
+description: Security scanning and triage for local Agent Skills. Use this skill to audit SKILL packages, detect prompt-injection/data-exfiltration/tool-abuse risks, and generate JSON/SARIF outputs for CI.
 ---
 
-# Claude Code Skill Scanner
+# Agent Skill Scanner
 
-Use this skill to run security scans against Agent Skill packages.
+Use this skill to scan Agent Skill packages for security risks.
 
-The skill is self-contained: copy this skill directory into your Claude Code `skills/` directory. It includes:
+This skill is self-contained and includes:
 
-- bundled scanner source: `skill_scanner/`
+- scanner source: `skill_scanner/`
 - vendor runtime modules: `vendor/python/`
 - optional wheelhouse path: `vendor/wheels/`
 
-Note: default embedded mode uses a compatibility `yara` shim for offline execution, so native YARA matching is not enabled unless you run with wheelhouse + native dependencies.
+Default `embedded` mode uses a compatibility `yara` shim for offline execution. Native YARA requires wheelhouse + native dependencies.
 
 ## Workflow
 
 1. Resolve scan scope.
-- Scan one skill: use `scan` mode.
-- Scan a folder of skills: use `scan-all` mode.
+- Single skill: `scan`
+- Skill directory: `scan-all`
 
 2. Choose a profile.
 - `quick`: static + trigger checks, fast feedback.
 - `balanced`: add behavioral analysis for dataflow risks.
 - `deep`: add LLM + meta analyzer for semantic validation (API/provider key path).
-- `deep-agent`: no standalone scanner LLM API call; produce JSON and hand off semantic review to Claude Code/Codex host agent.
+- `deep-agent`: no standalone scanner LLM API call; output JSON and hand off semantic review to host agent.
 - `ci`: SARIF output + fail-on-findings for pipelines.
 
-3. Run the bundled wrapper.
+3. Run the wrapper.
 
 ```bash
 ./scripts/run-scan.sh <scan|scan-all> <target_path> [quick|balanced|deep|deep-agent|ci] [extra skill-scanner args...]
@@ -49,11 +49,11 @@ Examples:
 - Highlight `CRITICAL` and `HIGH` findings first.
 - Add concrete remediation steps per finding category.
 
-5. Autonomous host-agent semantic review (`deep-agent`).
-- Run `deep-agent` to generate:
-  - JSON findings (default: `.runtime/host-agent-review.json`)
-  - host-agent task prompt (default: `.runtime/host-agent-review-prompt.md`)
-- Ask Claude Code/Codex to execute `.runtime/host-agent-review-prompt.md` directly for evidence-based review and remediation.
+5. Host-agent semantic review (`deep-agent`).
+- `deep-agent` generates:
+  - JSON findings: `.runtime/host-agent-review.json` (default)
+  - task prompt: `.runtime/host-agent-review-prompt.md` (default)
+- Execute the generated prompt with your host agent for evidence-based remediation.
 
 ## Runtime Notes
 

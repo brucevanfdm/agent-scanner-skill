@@ -16,8 +16,6 @@
 
 """
 Constants for Skill Scanner.
-
-Mirrors MCP Scanner's constants structure.
 """
 
 from pathlib import Path

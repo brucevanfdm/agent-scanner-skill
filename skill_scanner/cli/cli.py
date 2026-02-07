@@ -86,7 +86,7 @@ def scan_command(args):
             print(msg)
 
     # Add behavioral analyzer if requested
-    if hasattr(args, "use_behavioral") and args.use_behavioral:
+    if args.use_behavioral:
         try:
             behavioral_analyzer = BehavioralAnalyzer(use_static_analysis=True)
             analyzers.append(behavioral_analyzer)
@@ -95,7 +95,7 @@ def scan_command(args):
             print(f"Warning: Could not initialize behavioral analyzer: {e}", file=sys.stderr)
 
     # Add LLM analyzer if requested and available
-    if hasattr(args, "use_llm") and args.use_llm:
+    if args.use_llm:
         if not LLM_AVAILABLE:
             print("Warning: LLM analyzer requested but dependencies not installed.", file=sys.stderr)
             print("Install with: pip install litellm anthropic openai", file=sys.stderr)
@@ -122,7 +122,7 @@ def scan_command(args):
                 print(f"Warning: Could not initialize LLM analyzer: {e}", file=sys.stderr)
 
     # Add VirusTotal analyzer if requested
-    if hasattr(args, "use_virustotal") and args.use_virustotal:
+    if args.use_virustotal:
         vt_api_key = args.vt_api_key or os.getenv("VIRUSTOTAL_API_KEY")
         if not vt_api_key:
             print("Warning: VirusTotal requested but no API key provided.", file=sys.stderr)
@@ -140,7 +140,7 @@ def scan_command(args):
                 print(f"Warning: Could not initialize VirusTotal analyzer: {e}", file=sys.stderr)
 
     # Add AI Defense analyzer if requested
-    if hasattr(args, "use_aidefense") and args.use_aidefense:
+    if args.use_aidefense:
         aidefense_api_key = getattr(args, "aidefense_api_key", None) or os.getenv("AI_DEFENSE_API_KEY")
         if not aidefense_api_key:
             print("Warning: AI Defense requested but no API key provided.", file=sys.stderr)
@@ -157,7 +157,7 @@ def scan_command(args):
                 print(f"Warning: Could not initialize AI Defense analyzer: {e}", file=sys.stderr)
 
     # Add Trigger analyzer if requested
-    if hasattr(args, "use_trigger") and args.use_trigger:
+    if args.use_trigger:
         try:
             from ..core.analyzers.trigger_analyzer import TriggerAnalyzer
 
@@ -169,7 +169,7 @@ def scan_command(args):
 
     # Initialize meta-analyzer if requested
     meta_analyzer = None
-    enable_meta = hasattr(args, "enable_meta") and args.enable_meta
+    enable_meta = args.enable_meta
     if enable_meta:
         if not META_AVAILABLE:
             print("Warning: Meta-analyzer requested but dependencies not installed.", file=sys.stderr)
@@ -313,7 +313,7 @@ def scan_all_command(args):
             print(msg)
 
     # Add behavioral analyzer if requested
-    if hasattr(args, "use_behavioral") and args.use_behavioral:
+    if args.use_behavioral:
         try:
             behavioral_analyzer = BehavioralAnalyzer(use_static_analysis=True)
             analyzers.append(behavioral_analyzer)
@@ -322,7 +322,7 @@ def scan_all_command(args):
             print(f"Warning: Could not initialize behavioral analyzer: {e}", file=sys.stderr)
 
     # Add LLM analyzer if requested
-    if hasattr(args, "use_llm") and args.use_llm:
+    if args.use_llm:
         if not LLM_AVAILABLE:
             print("Warning: LLM analyzer requested but dependencies not installed.", file=sys.stderr)
             print("Install with: pip install litellm anthropic openai", file=sys.stderr)
@@ -348,7 +348,7 @@ def scan_all_command(args):
                 print(f"Warning: Could not initialize LLM analyzer: {e}", file=sys.stderr)
 
     # Add VirusTotal analyzer if requested
-    if hasattr(args, "use_virustotal") and args.use_virustotal:
+    if args.use_virustotal:
         vt_api_key = args.vt_api_key or os.getenv("VIRUSTOTAL_API_KEY")
         vt_upload = getattr(args, "vt_upload_files", False)
         if not vt_api_key:
@@ -366,7 +366,7 @@ def scan_all_command(args):
                 print(f"Warning: Could not initialize VirusTotal analyzer: {e}", file=sys.stderr)
 
     # Add AI Defense analyzer if requested
-    if hasattr(args, "use_aidefense") and args.use_aidefense:
+    if args.use_aidefense:
         aidefense_api_key = getattr(args, "aidefense_api_key", None) or os.getenv("AI_DEFENSE_API_KEY")
         if not aidefense_api_key:
             print("Warning: AI Defense requested but no API key provided.", file=sys.stderr)
@@ -383,7 +383,7 @@ def scan_all_command(args):
                 print(f"Warning: Could not initialize AI Defense analyzer: {e}", file=sys.stderr)
 
     # Add Trigger analyzer if requested
-    if hasattr(args, "use_trigger") and args.use_trigger:
+    if args.use_trigger:
         try:
             from ..core.analyzers.trigger_analyzer import TriggerAnalyzer
 
@@ -395,7 +395,7 @@ def scan_all_command(args):
 
     # Initialize meta-analyzer if requested
     meta_analyzer = None
-    enable_meta = hasattr(args, "enable_meta") and args.enable_meta
+    enable_meta = args.enable_meta
     if enable_meta:
         if not META_AVAILABLE:
             print("Warning: Meta-analyzer requested but dependencies not installed.", file=sys.stderr)
@@ -426,7 +426,7 @@ def scan_all_command(args):
 
     try:
         # Scan all skills
-        check_overlap = hasattr(args, "check_overlap") and args.check_overlap
+        check_overlap = args.check_overlap
         report = scanner.scan_directory(skills_dir, recursive=args.recursive, check_overlap=check_overlap)
 
         if report.total_skills_scanned == 0:
@@ -597,10 +597,6 @@ def list_analyzers_command(args):
         print("   - Install with: pip install litellm")
         print("")
 
-    print("Future Analyzers (not yet implemented):")
-    print("  - policy_checker: Organization-specific policy validation")
-    print("  - runtime_monitor: Live execution monitoring (sandbox)")
-    print("")
     return 0
 
 

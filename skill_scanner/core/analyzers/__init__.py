@@ -16,8 +16,6 @@
 
 """
 Analyzer modules for detecting security vulnerabilities in agent skills.
-
-Structure mirrors MCP Scanner's analyzer organization.
 """
 
 from .base import BaseAnalyzer

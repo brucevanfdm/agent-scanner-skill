@@ -16,8 +16,6 @@
 
 """
 Configuration management for Skill Scanner.
-
-Mirrors MCP Scanner's config structure.
 """
 
 from .config import Config

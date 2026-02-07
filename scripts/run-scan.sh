@@ -68,9 +68,9 @@ EXTRA_ARGS=("$@")
 
 PROFILE_ARGS=()
 HOST_AGENT_MODE=0
-HOST_AGENT_OUTPUT_PATH="${SKILL_DIR}/.runtime/host-agent-review.json"
+DEFAULT_REVIEW_JSON_PATH="${SKILL_DIR}/.runtime/host-agent-review.json"
 HOST_AGENT_PROMPT_PATH="${SKILL_DIR}/.runtime/host-agent-review-prompt.md"
-REVIEW_JSON_PATH="$HOST_AGENT_OUTPUT_PATH"
+REVIEW_JSON_PATH="$DEFAULT_REVIEW_JSON_PATH"
 case "$PROFILE" in
   quick)
     PROFILE_ARGS+=(--use-trigger --format summary)
@@ -83,7 +83,6 @@ case "$PROFILE" in
     ;;
   deep-agent)
     # Host-agent mode: do not call external LLM APIs from scanner.
-    # Generate machine-readable findings and let Claude Code/Codex perform semantic review.
     PROFILE_ARGS+=(--use-behavioral --use-trigger --format json)
     HOST_AGENT_MODE=1
     ;;
@@ -139,7 +138,7 @@ cd "$SKILL_DIR"
 
 CMD=("${PYTHON_CMD[@]}" -m skill_scanner.cli.cli "$MODE" "$TARGET_ABS" "${PROFILE_ARGS[@]}")
 
-# deep-agent mode needs a JSON output file to hand off to host-agent semantic review.
+# deep-agent mode needs a JSON output file for host-agent semantic review.
 if [[ "$HOST_AGENT_MODE" -eq 1 ]]; then
   HAS_OUTPUT_ARG=0
   for (( i=0; i<${#EXTRA_ARGS[@]}; i++ )); do
@@ -155,9 +154,9 @@ if [[ "$HOST_AGENT_MODE" -eq 1 ]]; then
     fi
   done
   if [[ "$HAS_OUTPUT_ARG" -eq 0 ]]; then
-    mkdir -p "$(dirname "$HOST_AGENT_OUTPUT_PATH")"
-    EXTRA_ARGS+=(--output "$HOST_AGENT_OUTPUT_PATH")
-    REVIEW_JSON_PATH="$HOST_AGENT_OUTPUT_PATH"
+    mkdir -p "$(dirname "$DEFAULT_REVIEW_JSON_PATH")"
+    EXTRA_ARGS+=(--output "$DEFAULT_REVIEW_JSON_PATH")
+    REVIEW_JSON_PATH="$DEFAULT_REVIEW_JSON_PATH"
   fi
 fi
 
@@ -212,5 +211,5 @@ EOF
   echo "[deep-agent] Semantic handoff (no separate LLM API key required):"
   echo "1) Scan JSON: $REVIEW_JSON_ABS"
   echo "2) Host-agent prompt: $HOST_AGENT_PROMPT_PATH"
-  echo "3) Ask Claude Code/Codex to execute that prompt for autonomous review + remediation."
+  echo "3) Execute that prompt with your host agent for autonomous review + remediation."
 fi

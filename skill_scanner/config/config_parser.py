@@ -25,7 +25,6 @@ from pathlib import Path
 
 from ..utils.logging_config import get_logger
 from .config import Config
-from .constants import SkillScannerConstants
 
 logger = get_logger(__name__)
 
@@ -97,10 +96,6 @@ def parse_config_file(config_path: str | None = None) -> Config:
 
 class ConfigParser:
     """Parser for Skill Scanner configuration files."""
-
-    def __init__(self):
-        """Initialize the config parser."""
-        self.constants = SkillScannerConstants
 
     def parse(self, config_path: str | None = None) -> Config:
         """Parse configuration from file and environment.

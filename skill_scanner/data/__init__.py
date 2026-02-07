@@ -16,8 +16,6 @@
 
 """
 Data directory for Skill Scanner.
-
-Contains prompts and rule files, matching MCP Scanner structure.
 """
 
 from pathlib import Path

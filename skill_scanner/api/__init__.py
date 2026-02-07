@@ -16,8 +16,6 @@
 
 """
 REST API server for Skill Scanner.
-
-Matches MCP Scanner's API structure.
 """
 
 from .api import app

@@ -16,8 +16,6 @@
 
 """
 Configuration class for Skill Scanner.
-
-Based on MCP Scanner's Config structure.
 """
 
 import os
@@ -29,8 +27,6 @@ from pathlib import Path
 class Config:
     """
     Configuration for Skill Scanner.
-
-    Mirrors MCP Scanner's Config class structure.
     """
 
     # LLM Configuration
