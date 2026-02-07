@@ -1,5 +1,5 @@
 ---
-name: claude-code-skill-scanner
+name: agent-scanner-skill
 description: Security scanning and triage for local Agent Skills. Use this skill to audit SKILL packages, detect prompt-injection/data-exfiltration/tool-abuse risks, and generate JSON/SARIF outputs for CI.
 ---
 
