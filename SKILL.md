@@ -59,23 +59,33 @@ Default `embedded` mode uses a compatibility `yara` shim for offline execution.
 ### 3. Run scan
 
 ```bash
-./scripts/run-scan.sh <scan|scan-all> <target_path> [profile] [extra args...]
+bash /path/to/skill/scripts/run-scan.sh <scan|scan-all> <target_path> [profile] [extra args...]
 ```
+
+**Usage syntax**: `bash /path/to/agent-scanner-skill/scripts/run-scan.sh <scan|scan-all> <target> [profile] [options]`
+
+- `scan|scan-all`: Scan single skill or directory of skills
+- `target`: Path to skill directory or skills directory
+- `profile`: `quick`, `balanced`, or `deep-agent` (default: `balanced`)
+- `options`: Extra scanner flags like `--yara-mode strict`, `--format json`, `--verbose`
 
 Examples:
 
 ```bash
 # Quick scan for rapid feedback
-bash /path/to/skill/scripts/run-scan.sh scan /path/to/target-skill quick
+bash /path/to/agent-scanner-skill/scripts/run-scan.sh scan /path/to/target-skill quick
 
 # Balanced with strict YARA rules
-bash /path/to/skill/scripts/run-scan.sh scan /path/to/target-skill balanced --yara-mode strict
+bash /path/to/agent-scanner-skill/scripts/run-scan.sh scan /path/to/target-skill balanced --yara-mode strict
 
 # Deep scan for critical skills
-bash /path/to/skill/scripts/run-scan.sh scan /path/to/target-skill deep-agent
+bash /path/to/agent-scanner-skill/scripts/run-scan.sh scan /path/to/target-skill deep-agent
+
+# Deep scan with verbose output
+bash /path/to/agent-scanner-skill/scripts/run-scan.sh scan /path/to/target-skill deep-agent --verbose
 
 # Scan all skills in a directory
-bash /path/to/skill/scripts/run-scan.sh scan-all /path/to/skills-directory deep-agent
+bash /path/to/agent-scanner-skill/scripts/run-scan.sh scan-all /path/to/skills-directory deep-agent
 ```
 
 ### 4. Interpret results

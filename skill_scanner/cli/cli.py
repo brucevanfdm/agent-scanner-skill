@@ -113,9 +113,9 @@ def _generate_and_output_report(result_or_report, args, is_multi_skill=False):
         output = reporter.generate_report(result_or_report)
     else:  # summary
         if is_multi_skill:
-            output = generate_multi_skill_summary(result_or_report)
+            output = generate_multi_skill_summary(result_or_report, verbose=args.verbose)
         else:
-            output = generate_summary(result_or_report)
+            output = generate_summary(result_or_report, verbose=args.verbose)
 
     # Output
     if args.output:
@@ -259,7 +259,7 @@ def validate_rules_command(args):
         return 1
 
 
-def generate_summary(result) -> str:
+def generate_summary(result, verbose: bool = False) -> str:
     """Generate a simple summary output."""
     lines = []
     lines.append("=" * 60)
@@ -281,10 +281,19 @@ def generate_summary(result) -> str:
         lines.append(f"  Low:      {len(result.get_findings_by_severity(Severity.LOW))}")
         lines.append(f"  Info:     {len(result.get_findings_by_severity(Severity.INFO))}")
 
+        if verbose:
+            lines.append("")
+            lines.append("Top Findings:")
+            for finding in sorted(result.findings, key=lambda f: (
+                list(Severity).index(f.severity) if isinstance(f.severity, Severity) else 99,
+                f.rule_id or ""
+            ))[:10]:
+                lines.append(f"  [{finding.severity.value}] {finding.rule_id}: {finding.title}")
+
     return "\n".join(lines)
 
 
-def generate_multi_skill_summary(report) -> str:
+def generate_multi_skill_summary(report, verbose: bool = False) -> str:
     """Generate a simple summary for multiple skills."""
     lines = []
     lines.append("=" * 60)
@@ -322,9 +331,12 @@ def _add_common_scan_arguments(parser):
         default="summary",
         help="Output format (default: summary). Use 'sarif' for GitHub Code Scanning integration.",
     )
+    parser.add_argument("--output-format", dest="format", choices=["summary", "json", "markdown", "table", "sarif"],
+        help="Alias for --format (for compatibility)")
     parser.add_argument("--output", "-o", help="Output file path")
     parser.add_argument("--detailed", action="store_true", help="Include detailed findings")
     parser.add_argument("--compact", action="store_true", help="Compact JSON output")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output")
     parser.add_argument(
         "--fail-on-findings", action="store_true", help="Exit with error code if critical/high findings exist"
     )

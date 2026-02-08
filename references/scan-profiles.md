@@ -66,6 +66,15 @@ bash /path/to/skill/scripts/run-scan.sh scan /path/to/target-skill balanced
 
 | Use case | Command |
 |----------|---------|
-| Human review | `quick|balanced|deep-agent` (prints conclusion to stdout) |
+| Human review | `quick\|balanced\|deep-agent` (prints conclusion to stdout) |
+| JSON output | Add `--format json` or `--output-format json` |
+| Verbose mode | Add `--verbose` or `-v` |
 | File output | Add `--output results.json` or `--output results.md` |
-| Custom processing | Call `python -m skill_scanner.cli.cli` directly with `--format json` |
+| Custom processing | Call `python -m skill_scanner.cli.cli` directly |
+
+**Note**: Output format options (`--format`, `--output`) are filtered in manual profiles (quick/balanced/deep-agent) to ensure the wrapper prints the final conclusion. For machine-readable output during scanning, call the scanner directly:
+
+```bash
+cd /path/to/agent-scanner-skill
+PYTHONPATH=vendor/python:. python3 -m skill_scanner.cli.cli scan /path/to/target --format json --use-behavioral --use-trigger --use-deep-agent
+```

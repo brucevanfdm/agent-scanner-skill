@@ -169,10 +169,10 @@ filter_cascade_args() {
       continue
     fi
     case "$arg" in
-      --output|-o|--format)
+      --output|-o|--format|--output-format)
         skip_next=1
         ;;
-      --output=*|--format=*|--compact|--detailed|--fail-on-findings)
+      --output=*|--format=*|--output-format=*|--compact|--detailed|--fail-on-findings)
         ;;
       *)
         CASCADE_ARGS+=("$arg")
