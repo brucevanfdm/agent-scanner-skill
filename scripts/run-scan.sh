@@ -144,8 +144,11 @@ build_stage_args() {
     quick)
       echo "--use-trigger"
       ;;
-    balanced|deep-agent)
+    balanced)
       echo "--use-behavioral --use-trigger"
+      ;;
+    deep-agent)
+      echo "--use-behavioral --use-trigger --use-deep-agent"
       ;;
     *)
       echo ""

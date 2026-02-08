@@ -74,6 +74,16 @@ def _initialize_analyzers(args, status_print):
         except Exception as e:
             print(f"Warning: Could not initialize Trigger analyzer: {e}", file=sys.stderr)
 
+    if args.use_deep_agent:
+        try:
+            from ..core.analyzers.deep_agent_analyzer import DeepAgentAnalyzer
+
+            deep_agent_analyzer = DeepAgentAnalyzer()
+            analyzers.append(deep_agent_analyzer)
+            status_print("Using Deep Agent analyzer (semantic review guide)")
+        except Exception as e:
+            print(f"Warning: Could not initialize Deep Agent analyzer: {e}", file=sys.stderr)
+
     return analyzers
 
 
@@ -213,6 +223,13 @@ def list_analyzers_command(args):
     print("   - Usage: --use-trigger")
     print("")
 
+    print("4. deep_agent_analyzer [OK] Available")
+    print("   - Generates semantic review guide for Claude Code")
+    print("   - Identifies high-risk files requiring manual review")
+    print("   - Detects cross-file data flow concerns")
+    print("   - Usage: --use-deep-agent")
+    print("")
+
     return 0
 
 
@@ -316,6 +333,11 @@ def _add_common_scan_arguments(parser):
         "--use-trigger",
         action="store_true",
         help="Enable trigger specificity analysis (detects overly generic descriptions)",
+    )
+    parser.add_argument(
+        "--use-deep-agent",
+        action="store_true",
+        help="Enable deep agent analysis (generates semantic review guide for Claude Code)",
     )
     parser.add_argument(
         "--yara-mode",

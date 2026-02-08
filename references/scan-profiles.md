@@ -22,9 +22,18 @@ Detailed configuration options for the scanner.
 - **Best for**: Pre-commit review, default manual checks
 
 ### deep-agent
-- **Flags**: Full cascade through all stages
-- **Behavior**: Maximum depth analysis with semantic verification
+- **Flags**: `--use-behavioral --use-trigger --use-deep-agent`
+- **Behavior**: Runs all analyzers and generates semantic review guide
 - **Best for**: Critical skills, pre-release validation
+- **Output**: Lists high-risk files that Claude Code should manually review
+
+The deep-agent profile adds **semantic analysis guidance**:
+- Identifies files with suspicious pattern combinations
+- Generates prioritized review list with risk scores
+- Flags cross-file data flow concerns
+- Guides Claude to read and analyze specific files
+
+See [deep-agent-guide.md](deep-agent-guide.md) for the review workflow.
 
 ## Optional Flags
 

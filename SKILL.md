@@ -34,9 +34,9 @@ Scan a single skill with default `balanced` profile:
 
 | Profile | Behavior | Use when |
 |---------|----------|----------|
-| `quick` | Starts with quick checks, auto-escalates if findings detected | Fast initial check |
-| `balanced` | Guarantees behavioral verification, escalates on findings | Default manual review |
-| `deep-agent` | Full three-stage cascade (quick → balanced → deep-agent) | Maximum confidence |
+| `quick` | Pattern-based trigger analysis only | Fast initial check |
+| `balanced` | Adds behavioral dataflow analysis | Default manual review |
+| `deep-agent` | Adds semantic review guide generation | Maximum confidence, requires reading flagged files |
 
 ### 3. Run scan
 
@@ -67,6 +67,17 @@ The wrapper prints a concise conclusion:
 
 Output is printed to stdout by default. To write results to a file, use `--output results.json` or `--output results.md`.
 
+### Deep Agent Mode
+
+The `deep-agent` profile generates a **review guide** that identifies high-risk files requiring semantic analysis. When deep-agent findings appear:
+
+1. Read the `DEEP_AGENT_REVIEW_GUIDE` finding for the priority file list
+2. Read each flagged file using the Read tool
+3. Analyze semantic intent: Does the code behavior match its description?
+4. Check cross-file data flows if reported
+
+See [references/deep-agent-guide.md](references/deep-agent-guide.md) for detailed review workflow.
+
 ## Runtime Configuration
 
 Default mode is `embedded` (no network installs required).
@@ -85,6 +96,7 @@ Read these references when needed:
 
 - **Scan profiles and tuning**: [references/scan-profiles.md](references/scan-profiles.md) — Read when user needs custom profiles, YARA tuning, or output format options
 - **Remediation guidance**: [references/remediation-playbook.md](references/remediation-playbook.md) — Read when findings exist and user asks how to fix them
+- **Deep agent review**: [references/deep-agent-guide.md](references/deep-agent-guide.md) — Read when `deep-agent` profile flags files for semantic review
 - **Offline setup**: `vendor/README.md` — Read when user needs offline/air-gapped installation
 - **Scripts**:
   - `scripts/run-scan.sh` — Main entry point (shown in Quick Start)
