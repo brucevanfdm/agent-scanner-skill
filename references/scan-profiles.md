@@ -54,12 +54,12 @@ For air-gapped environments:
 
 ```bash
 # On connected machine
-./scripts/build-vendor-wheelhouse.sh
+bash /path/to/skill/scripts/build-vendor-wheelhouse.sh
 
 # On offline machine
 export SKILL_SCANNER_RUNTIME=venv
 export SKILL_SCANNER_INSTALL_WHEELS=1
-./scripts/run-scan.sh scan ./my-skill balanced
+bash /path/to/skill/scripts/run-scan.sh scan /path/to/target-skill balanced
 ```
 
 ## Output Options

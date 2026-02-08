@@ -31,7 +31,7 @@ Do NOT report potential/uncertain findings as confirmed risks.
 Scan a single skill with default `balanced` profile:
 
 ```bash
-./scripts/run-scan.sh scan ./my-skill
+bash /path/to/skill/scripts/run-scan.sh scan /path/to/target-skill
 ```
 
 This skill is self-contained with:
@@ -66,13 +66,16 @@ Examples:
 
 ```bash
 # Quick scan for rapid feedback
-./scripts/run-scan.sh scan ./my-skill quick
+bash /path/to/skill/scripts/run-scan.sh scan /path/to/target-skill quick
 
 # Balanced with strict YARA rules
-./scripts/run-scan.sh scan ./my-skill balanced --yara-mode strict
+bash /path/to/skill/scripts/run-scan.sh scan /path/to/target-skill balanced --yara-mode strict
 
 # Deep scan for critical skills
-./scripts/run-scan.sh scan ./my-skill deep-agent
+bash /path/to/skill/scripts/run-scan.sh scan /path/to/target-skill deep-agent
+
+# Scan all skills in a directory
+bash /path/to/skill/scripts/run-scan.sh scan-all /path/to/skills-directory deep-agent
 ```
 
 ### 4. Interpret results
@@ -113,6 +116,6 @@ Read these references when needed:
 - **Deep agent review**: [references/deep-agent-guide.md](references/deep-agent-guide.md) — Read when `deep-agent` profile flags files for semantic review
 - **Offline setup**: `vendor/README.md` — Read when user needs offline/air-gapped installation
 - **Scripts**:
-  - `scripts/run-scan.sh` — Main entry point (shown in Quick Start)
+  - `scripts/run-scan.sh` — Main entry point (use `bash /path/to/skill/scripts/run-scan.sh ...`)
   - `scripts/install-scanner.sh` — Runtime setup helper
   - `scripts/build-vendor-wheelhouse.sh` — Build offline wheelhouse
