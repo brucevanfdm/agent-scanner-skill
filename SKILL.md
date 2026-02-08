@@ -1,6 +1,6 @@
 ---
 name: agent-scanner-skill
-description: Security scanning and triage for local Agent Skills. Use this skill to audit SKILL packages, detect prompt-injection/data-exfiltration/tool-abuse risks, and produce concise risk conclusions with reasons.
+description: Security scanning and triage for local Agent Skills. Use when the user wants to (1) audit/scan SKILL packages for security risks, (2) detect prompt-injection, data-exfiltration, tool-abuse, or code-execution vulnerabilities, (3) review skill safety before installation or deployment, (4) run security checks on skill code. Detects risks like AITech-1.1 (prompt injection), AITech-8.2 (data exfiltration), AITech-9.1 (command injection), AITech-4.3/12.1 (tool abuse).
 ---
 
 # Agent Skill Scanner
@@ -15,59 +15,78 @@ This skill is self-contained and includes:
 
 Default `embedded` mode uses a compatibility `yara` shim for offline execution. Native YARA requires wheelhouse + native dependencies.
 
-## Workflow
+## Quick Start
 
-1. Resolve scan scope.
-- Single skill: `scan`
-- Skill directory: `scan-all`
-
-2. Choose a profile.
-- `quick`: starts quick stage, auto-escalates to `balanced` then `deep-agent` only if findings are detected.
-- `balanced`: run at least through `balanced` (still starts with `quick`), escalates further on findings.
-- `deep-agent`: run all three stages (`quick` -> `balanced` -> `deep-agent`) for maximum confidence.
-- `ci`: SARIF output + fail-on-findings for pipelines.
-
-3. Run the wrapper.
+Scan a single skill with default `balanced` profile:
 
 ```bash
-./scripts/run-scan.sh <scan|scan-all> <target_path> [quick|balanced|deep-agent|ci] [extra skill-scanner args...]
+./scripts/run-scan.sh scan ./my-skill
+```
+
+## Workflow
+
+### 1. Choose scan scope
+
+- Single skill: use `scan`
+- Skill directory: use `scan-all`
+
+### 2. Choose profile
+
+| Profile | Behavior | Use when |
+|---------|----------|----------|
+| `quick` | Starts with quick checks, auto-escalates if findings detected | Fast initial check |
+| `balanced` | Guarantees behavioral verification, escalates on findings | Default manual review |
+| `deep-agent` | Full three-stage cascade (quick → balanced → deep-agent) | Maximum confidence |
+
+### 3. Run scan
+
+```bash
+./scripts/run-scan.sh <scan|scan-all> <target_path> [profile] [extra args...]
 ```
 
 Examples:
 
 ```bash
+# Quick scan for rapid feedback
 ./scripts/run-scan.sh scan ./my-skill quick
+
+# Balanced with strict YARA rules
 ./scripts/run-scan.sh scan ./my-skill balanced --yara-mode strict
+
+# Deep scan for critical skills
 ./scripts/run-scan.sh scan ./my-skill deep-agent
-./scripts/run-scan.sh scan-all ./skills ci --recursive --output results.sarif
 ```
 
-4. Read final output.
-- The wrapper prints a concise final decision:
-  - `Conclusion`: `RISK CONFIRMED` / `NO HIGH-CONFIDENCE RISK` / `NO RISK FOUND`
-  - `Reason`: final stage + severity counts + top evidence lines
-- Default behavior does not write report files for manual review flows (`quick|balanced|deep-agent`).
+### 4. Interpret results
 
-5. Use `ci` when you need machine-readable artifacts.
-- `ci` keeps SARIF + fail-on-findings behavior for pipelines.
+The wrapper prints a concise conclusion:
 
-## Runtime Notes
+- `Conclusion: RISK CONFIRMED` - Critical/High severity findings detected
+- `Conclusion: NO HIGH-CONFIDENCE RISK` - Only Medium/Low/Info findings
+- `Conclusion: NO RISK FOUND` - No findings detected
 
-Default runtime mode is `embedded` (no network installs required).
+Output is printed to stdout by default. To write results to a file, use `--output results.json` or `--output results.md`.
 
-- `SKILL_SCANNER_RUNTIME=embedded|venv` controls runtime strategy.
-- `SKILL_SCANNER_PYTHON=python3` sets interpreter.
-- `SKILL_SCANNER_INSTALL_WHEELS=1` makes `venv` mode install from `vendor/wheels/` only.
+## Runtime Configuration
 
-Security guardrail:
-- Scanner-side external API analyzers have been removed from the codebase.
-- Cascading review stays local without scanner external API network calls.
+Default mode is `embedded` (no network installs required).
+
+| Variable | Values | Description |
+|----------|--------|-------------|
+| `SKILL_SCANNER_RUNTIME` | `embedded` (default), `venv` | Runtime strategy |
+| `SKILL_SCANNER_PYTHON` | `python3` | Python interpreter |
+| `SKILL_SCANNER_INSTALL_WHEELS` | `0` (default), `1` | Install from `vendor/wheels/` only |
+
+Security note: Scanner operates entirely offline. External API analyzers have been removed to ensure no network calls during scanning.
 
 ## Resources
 
-- Scan presets and tuning: `references/scan-profiles.md`
-- Triage and fix playbook: `references/remediation-playbook.md`
-- Offline vendor notes: `vendor/README.md`
-- Runtime setup helper: `scripts/install-scanner.sh`
-- Optional wheelhouse builder: `scripts/build-vendor-wheelhouse.sh`
-- Command wrapper: `scripts/run-scan.sh`
+Read these references when needed:
+
+- **Scan profiles and tuning**: [references/scan-profiles.md](references/scan-profiles.md) — Read when user needs custom profiles, YARA tuning, or output format options
+- **Remediation guidance**: [references/remediation-playbook.md](references/remediation-playbook.md) — Read when findings exist and user asks how to fix them
+- **Offline setup**: `vendor/README.md` — Read when user needs offline/air-gapped installation
+- **Scripts**:
+  - `scripts/run-scan.sh` — Main entry point (shown in Quick Start)
+  - `scripts/install-scanner.sh` — Runtime setup helper
+  - `scripts/build-vendor-wheelhouse.sh` — Build offline wheelhouse
