@@ -1,19 +1,30 @@
 ---
 name: agent-scanner-skill
-description: Security scanning and triage for local Agent Skills. Use when the user wants to (1) audit/scan SKILL packages for security risks, (2) detect prompt-injection, data-exfiltration, tool-abuse, or code-execution vulnerabilities, (3) review skill safety before installation or deployment, (4) run security checks on skill code. Detects risks like AITech-1.1 (prompt injection), AITech-8.2 (data exfiltration), AITech-9.1 (command injection), AITech-4.3/12.1 (tool abuse).
+description: Security scanning and triage for local Agent Skills. Use when the user wants to audit/scan SKILL packages for security risks, detect prompt-injection/data-exfiltration/tool-abuse/code-execution vulnerabilities, review skill safety before installation or deployment, or run security checks on skill code. Detects AITech-1.1 (prompt injection), AITech-8.2 (data exfiltration), AITech-9.1 (command injection), AITech-4.3/12.1 (tool abuse).
 ---
 
 # Agent Skill Scanner
 
 Use this skill to scan Agent Skill packages for security risks.
 
-This skill is self-contained and includes:
+## CRITICAL: When DEEP_AGENT Findings Appear
 
-- scanner source: `skill_scanner/`
-- vendor runtime modules: `vendor/python/`
-- optional wheelhouse path: `vendor/wheels/`
+When the scanner outputs `DEEP_AGENT_REVIEW_GUIDE` or `DEEP_AGENT_FILE_REVIEW` findings, you MUST:
 
-Default `embedded` mode uses a compatibility `yara` shim for offline execution. Native YARA requires wheelhouse + native dependencies.
+1. Read each flagged file using the Read tool
+2. Analyze whether the code behavior matches its claimed purpose
+3. Check if risky operations are properly guarded
+4. **Distinguish real risks from false positives**
+
+This is REQUIRED for deep-agent profile scans — the scanner identifies suspicious patterns but cannot determine intent. Your job is to verify which findings represent actual security concerns.
+
+**Final report format**: After manual review, tell the user clearly:
+- ✅ "This skill is safe to use" (if no real risks found)
+- ⚠️ "This skill has [X] security issue(s) that should be fixed" (with specific issues)
+
+Do NOT report potential/uncertain findings as confirmed risks.
+
+---
 
 ## Quick Start
 
@@ -22,6 +33,13 @@ Scan a single skill with default `balanced` profile:
 ```bash
 ./scripts/run-scan.sh scan ./my-skill
 ```
+
+This skill is self-contained with:
+- Scanner source: `skill_scanner/`
+- Vendor runtime modules: `vendor/python/`
+- Optional wheelhouse: `vendor/wheels/`
+
+Default `embedded` mode uses a compatibility `yara` shim for offline execution.
 
 ## Workflow
 
@@ -59,24 +77,20 @@ Examples:
 
 ### 4. Interpret results
 
-The wrapper prints a concise conclusion:
+The wrapper prints a user-friendly conclusion:
 
-- `Conclusion: RISK CONFIRMED` - Critical/High severity findings detected
-- `Conclusion: NO HIGH-CONFIDENCE RISK` - Only Medium/Low/Info findings
-- `Conclusion: NO RISK FOUND` - No findings detected
+- `Conclusion: RISK CONFIRMED` - The skill has confirmed security issues that should be fixed before use
+- `Conclusion: NO HIGH-CONFIDENCE RISK` - No critical risks found, but some minor issues were detected
+- `Conclusion: NO RISK FOUND` - No security issues detected
 
-Output is printed to stdout by default. To write results to a file, use `--output results.json` or `--output results.md`.
+**Important**: The scanner may produce false positives. When `DEEP_AGENT_REVIEW_GUIDE` or `DEEP_AGENT_FILE_REVIEW` findings appear, you MUST read the flagged files to verify whether they represent real risks or benign patterns.
 
-### Deep Agent Mode
+Your final report to the user should:
+1. State clearly whether the skill is safe to use
+2. List only **confirmed** security issues (not potential/uncertain findings)
+3. Explain any false positives you identified during manual review
 
-The `deep-agent` profile generates a **review guide** that identifies high-risk files requiring semantic analysis. When deep-agent findings appear:
-
-1. Read the `DEEP_AGENT_REVIEW_GUIDE` finding for the priority file list
-2. Read each flagged file using the Read tool
-3. Analyze semantic intent: Does the code behavior match its description?
-4. Check cross-file data flows if reported
-
-See [references/deep-agent-guide.md](references/deep-agent-guide.md) for detailed review workflow.
+For detailed deep-agent review workflow, see [references/deep-agent-guide.md](references/deep-agent-guide.md).
 
 ## Runtime Configuration
 
